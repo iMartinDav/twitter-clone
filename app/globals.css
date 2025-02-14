@@ -12,6 +12,16 @@
   }
 }
 
+@keyframes tilt {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(1deg); }
+  75% { transform: rotate(-1deg); }
+}
+
+.animate-tilt {
+  animation: tilt 3s ease-in-out infinite;
+}
+
 @layer components {
   .btn-primary {
     @apply bg-[#59F6E8] text-[#16141D] hover:bg-[#4AD1C5] font-semibold rounded-md py-2.5 px-4 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#59F6E8] focus-visible:ring-offset-2;

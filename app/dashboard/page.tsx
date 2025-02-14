@@ -1,141 +1,270 @@
-'use client';
+// app/dashboard/page.tsx
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/user-hook';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ImagePlus, List, Smile, MapPin, BarChart2 } from 'lucide-react';
-import TweetList from './tweet-list';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+import { motion } from 'framer-motion'
+import { FaSquareXTwitter } from 'react-icons/fa6'
+import {
+  ImagePlus,
+  Smile,
+  MapPin,
+  BarChart4,
+  MessageSquare,
+  Heart,
+  Repeat2,
+  Share,
+} from 'lucide-react'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+
+import { useUser } from '@/lib/user-hook'
+import { useToast } from '@/components/ui/use-toast'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { TweetActionButton } from '@/components/tweet/tweet-action-button'
+import { useTweetInteractions } from '@/hooks/use-tweet-interactions'
+import type { Database } from '@/types/supabase'
+
+interface Tweet {
+  id: string
+  content: string
+  user_id: string
+  created_at: string
+  user: Database['public']['Tables']['profiles']['Row']
+}
 
 const ACTIONS = [
   { icon: ImagePlus, label: 'Media' },
-  { icon: BarChart2, label: 'Poll' },
+  { icon: BarChart4, label: 'Poll' },
   { icon: Smile, label: 'Emoji' },
   { icon: MapPin, label: 'Location' },
-];
+] as const
 
 export default function Dashboard() {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const { user } = useUser();
-  const { toast } = useToast();
-  const router = useRouter();
-  const maxLength = 280;
+  const { user } = useUser()
+  const { toast } = useToast()
+  const router = useRouter()
+  const supabase = createClientComponentClient<Database>()
+  const { interactions, fetchTweetInteractions, handleLike } = useTweetInteractions()
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [content, setContent] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tweets, setTweets] = useState<Tweet[]>([])
+  const [isMounted, setIsMounted] = useState(false)
+
+  const maxLength = 280
+  const remainingChars = maxLength - content.length
+  const charCountColor = useMemo(() => {
+    if (remainingChars < 0) return 'text-red-500'
+    if (remainingChars < 20) return 'text-yellow-500'
+    return 'text-gray-400'
+  }, [remainingChars])
+
+  const fetchTweets = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tweets')
+        .select('*, user:profiles(full_name, username, avatar_url)')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setTweets(data)
+    } catch (error) {
+      console.error('Error fetching tweets:', error)
+      toast({ title: 'Error', description: 'Failed to load tweets', variant: 'destructive' })
+    }
+  }, [supabase, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || isSubmitting) return;
+    e.preventDefault()
+    if (!content.trim() || isSubmitting || !user) return
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      toast({ title: 'Success', description: 'Tweet posted!' });
-      setContent('');
-      router.refresh();
+      const { error } = await supabase
+        .from('tweets')
+        .insert([{ content: content.trim(), user_id: user.id }])
+
+      if (error) throw error
+
+      setContent('')
+      toast({ title: 'Success', description: 'Tweet posted!' })
+      await fetchTweets()
     } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to post tweet',
         variant: 'destructive',
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
-
-  const getInitials = (name?: string, email?: string): string => {
-    if (name) return name.charAt(0).toUpperCase();
-    if (email) return email.charAt(0).toUpperCase();
-    return '?';
-  };
-
-  const characterCount = content.length;
-  const isOverLimit = characterCount > maxLength;
-
-  if (!isMounted) {
-    return <LoadingSkeleton />;
   }
+
+  const handleRealtimeUpdate = useCallback(
+    (payload: RealtimePostgresChangesPayload<Database['public']['Tables']['tweets']['Row']>) => {
+      if (payload.eventType === 'INSERT') fetchTweets()
+      if (payload.eventType === 'DELETE')
+        setTweets((prev) => prev.filter((t) => t.id !== payload.old.id))
+    },
+    [fetchTweets],
+  )
+
+  const handleRealtimeLike = useCallback(
+    (payload: RealtimePostgresChangesPayload<Database['public']['Tables']['likes']['Row']>) => {
+      if ('tweet_id' in payload.new && payload.new.tweet_id)
+        fetchTweetInteractions(payload.new.tweet_id)
+    },
+    [fetchTweetInteractions],
+  )
+
+  useEffect(() => {
+    setIsMounted(true)
+    fetchTweets()
+
+    const tweetsChannel = supabase
+      .channel('tweets_channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tweets' },
+        handleRealtimeUpdate,
+      )
+      .subscribe()
+
+    const likesChannel = supabase
+      .channel('likes_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, handleRealtimeLike)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(tweetsChannel)
+      supabase.removeChannel(likesChannel)
+    }
+  }, [fetchTweets, handleRealtimeLike, handleRealtimeUpdate, supabase])
+
+  const renderTweet = useCallback(
+    (tweet: Tweet) => (
+      <motion.div
+        key={tweet.id}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="p-4 hover:bg-white/5 transition-colors border-b border-[#2F3336]"
+      >
+        <div className="flex gap-4">
+          <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
+            <AvatarImage src={tweet.user.avatar_url} className="object-cover" />
+            <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+              {tweet.user.full_name[0]}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-bold text-white truncate hover:underline cursor-pointer">
+                {tweet.user.full_name}
+              </span>
+              <span className="text-gray-500 truncate">@{tweet.user.username}</span>
+              <span className="text-gray-500">·</span>
+              <time className="text-gray-500" dateTime={tweet.created_at}>
+                {format(new Date(tweet.created_at), 'MMM d')}
+              </time>
+            </div>
+
+            <p className="text-white mt-1 break-words">{tweet.content}</p>
+
+            <div className="flex items-center justify-between mt-3">
+              <TweetActionButton
+                icon={MessageSquare}
+                label="Reply"
+                count={interactions[tweet.id]?.replies?.length}
+                hoverColor="hover:text-blue-400"
+                onClick={() => router.push(`/tweet/${tweet.id}`)}
+              />
+              <TweetActionButton
+                icon={Repeat2}
+                label="Retweet"
+                count={interactions[tweet.id]?.retweets?.length}
+                hoverColor="hover:text-green-400"
+              />
+              <TweetActionButton
+                icon={Heart}
+                label="Like"
+                count={interactions[tweet.id]?.likes?.length}
+                isActive={interactions[tweet.id]?.likes?.some((like) => like.user_id === user?.id)}
+                activeColor="text-red-400"
+                hoverColor="hover:text-red-400"
+                onClick={() => user?.id && handleLike(tweet.id, user.id)}
+              />
+              <TweetActionButton icon={Share} label="Share" hoverColor="hover:text-blue-400" />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    ),
+    [interactions, user?.id, router, handleLike],
+  )
+
+  if (!isMounted) return <LoadingSkeleton />
 
   return (
     <div className="w-full max-w-[600px] mx-auto bg-background">
       <header className="sticky top-0 bg-background/80 backdrop-blur-sm z-30 border-b border-[#2F3336]">
+        <div className="flex justify-center p-2">
+          <FaSquareXTwitter className="text-4xl text-[#59F6E8]" />
+        </div>
         <nav className="flex px-4 py-3">
-          <div className="flex gap-8 w-full">
-            <Button
-              variant="ghost"
-              className="flex-1 text-white/90 hover:bg-white/10 transition-colors font-semibold relative"
-            >
-              For you
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-[#6B46CC] rounded-full" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1 text-white/50 hover:bg-white/10 transition-colors font-semibold"
-            >
-              Following
-            </Button>
-          </div>
+          <Button variant="ghost" className="flex-1 font-semibold relative text-white/90">
+            For you
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-[#6B46CC] rounded-full" />
+          </Button>
+          <Button variant="ghost" className="flex-1 text-white/50 font-semibold">
+            Following
+          </Button>
         </nav>
       </header>
 
       <form onSubmit={handleSubmit} className="border-b border-[#2F3336]">
-        <div className="flex p-4">
-        <Avatar className="h-10 w-10">
-          <AvatarImage
-            src={user?.user_metadata?.avatar_url}
-            alt="Profile"
-          />
-          <AvatarFallback className="bg-[#59F6E8] text-[#16141D]">
-            {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-          
-          <div className="flex-1 ml-3">
+        <div className="flex p-4 gap-4">
+          <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
+            <AvatarImage className="object-cover" />
+            <AvatarFallback className="bg-[#352f4d] text-white text-lg"></AvatarFallback>
+          </Avatar>
+
+          <div className="flex-1 space-y-4">
             <Textarea
               placeholder="What is happening?!"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="text-xl bg-transparent border-none text-white placeholder-white/50 focus:ring-0 resize-none p-0 min-h-[56px]"
-              required
+              className="text-xl bg-transparent border-none placeholder:text-muted-foreground resize-none min-h-[120px]"
               maxLength={maxLength}
             />
-            
-            <div className="mt-3 flex items-center justify-between border-t border-[#2F3336] pt-3">
-              <div className="flex -ml-2">
+
+            <div className="flex items-center justify-between pt-2 border-t border-[#2F3336]">
+              <div className="flex gap-1">
                 {ACTIONS.map(({ icon: Icon, label }) => (
                   <Button
                     key={label}
                     variant="ghost"
                     size="icon"
-                    className="rounded-full hover:bg-[#2F3336] transition-colors"
-                    aria-label={label}
+                    className="text-[#6B46CC] hover:bg-foreground/10 h-8 w-8"
                   >
-                    <Icon className="h-5 w-5 text-[#6B46CC]" />
+                    <Icon className="h-4 w-4" />
                   </Button>
                 ))}
               </div>
-              
+
               <div className="flex items-center gap-4">
-                {content.length > 0 && (
-                  <div className="flex items-center">
-                    <span className={`text-sm ${isOverLimit ? 'text-red-500' : 'text-gray-400'}`}>
-                      {characterCount}/{maxLength}
-                    </span>
-                  </div>
-                )}
+                <span className={`text-sm ${charCountColor}`}>
+                  {content.length}/{maxLength}
+                </span>
                 <Button
                   type="submit"
-                  className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] text-white px-4 py-1.5 text-sm font-bold transition-colors"
-                  disabled={isSubmitting || !content.trim() || isOverLimit}
+                  className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] h-8 px-4 text-sm font-bold"
+                  disabled={isSubmitting || !content.trim() || content.length > maxLength}
                 >
                   {isSubmitting ? 'Posting...' : 'Post'}
                 </Button>
@@ -145,9 +274,18 @@ export default function Dashboard() {
         </div>
       </form>
 
-      <TweetList />
+      <div className="divide-y divide-[#2F3336]">
+        {tweets.length > 0 ? (
+          tweets.map(renderTweet)
+        ) : (
+          <div className="p-8 text-center text-muted-foreground">
+            <p className="text-lg">No tweets yet</p>
+            <p className="text-sm mt-2">Be the first to share your thoughts!</p>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
 
 function LoadingSkeleton() {
@@ -171,5 +309,5 @@ function LoadingSkeleton() {
         </div>
       ))}
     </div>
-  );
+  )
 }

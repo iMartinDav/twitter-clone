@@ -1,0 +1,77 @@
+-- First, drop ALL existing policies to ensure clean slate
+DO $$ 
+BEGIN
+    -- Drop all policies from storage.objects
+    DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+    DROP POLICY IF EXISTS "Users can upload avatars" ON storage.objects;
+    DROP POLICY IF EXISTS "Users can delete own avatars" ON storage.objects;
+    DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
+    DROP POLICY IF EXISTS "Cover images are publicly accessible" ON storage.objects;
+    DROP POLICY IF EXISTS "Users can upload covers" ON storage.objects;
+    DROP POLICY IF EXISTS "Users can delete own covers" ON storage.objects;
+    DROP POLICY IF EXISTS "Give users access to own folder" ON storage.objects;
+    DROP POLICY IF EXISTS "Give public access to avatar and cover images" ON storage.objects;
+
+    -- Drop all policies from profiles
+    DROP POLICY IF EXISTS "Users can view all profiles" ON profiles;
+    DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+    DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
+    DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+END $$;
+
+-- Enable RLS
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Create new storage policies
+CREATE POLICY "Give users access to own folder"
+ON storage.objects FOR ALL
+TO authenticated
+USING (
+  bucket_id IN ('avatars', 'covers')
+  AND (auth.uid())::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Give public access to avatar and cover images"
+ON storage.objects FOR SELECT
+TO public
+USING (
+  bucket_id IN ('avatars', 'covers')
+);
+
+-- Create new profile policies
+CREATE POLICY "Public profiles are viewable by everyone"
+ON profiles FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Users can insert their own profile"
+ON profiles FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can update own profile"
+ON profiles FOR UPDATE
+TO authenticated
+USING (auth.uid()::text = user_id::text)
+WITH CHECK (auth.uid()::text = user_id::text);
+
+-- Ensure storage buckets exist and are public
+INSERT INTO storage.buckets (id, name, public)
+VALUES 
+  ('avatars', 'avatars', true),
+  ('covers', 'covers', true)
+ON CONFLICT (id) DO UPDATE
+SET public = true;
+
+-- Add bucket policies
+DROP POLICY IF EXISTS "Allow public bucket access" ON storage.buckets;
+CREATE POLICY "Allow public bucket access"
+ON storage.buckets FOR SELECT
+TO public
+USING (true);
+
+-- Grant permissions
+GRANT ALL ON storage.objects TO authenticated;
+GRANT ALL ON storage.buckets TO authenticated;
+GRANT ALL ON profiles TO authenticated;

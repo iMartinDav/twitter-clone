@@ -1,19 +1,21 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
-import { Home, Search, Bell, MessageSquare, List, User, Settings, Plus } from 'lucide-react'
+import { Home, Search, Bell, MessageSquare, List, User, Settings, Plus, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { FaSquareXTwitter } from 'react-icons/fa6'
 import NewTweetDialog from './new-tweet-dialog'
 import { Button } from '@/components/ui/button'
 
-interface SidebarProps {
-  user: {
-    email?: string
-    user_metadata?: {
-      avatar_url?: string
-      full_name?: string
-      username?: string
-    }
-  }
+interface Profile {
+  id: string
+  full_name: string
+  username: string
+  avatar_url: string
+  bio: string
 }
 
 const navItems = [
@@ -27,64 +29,120 @@ const navItems = [
   { icon: Settings, label: 'Settings', href: '#' },
 ]
 
-export default function Sidebar({ user }: SidebarProps) {
-  return (
-    <aside className="w-[88px] lg:w-[240px] h-full p-4 flex flex-col gap-4">
-      {/* Twitter/X Logo */}
-      <div className="hidden lg:flex justify-center p-2">
-        <FaSquareXTwitter className="text-3xl text-[#59F6E8]" />
-      </div>
+export default function Sidebar() {
+  const { user, session } = useAuth()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user?.id) return
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+
+        if (error) throw error
+        if (data) setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+      }
+    }
+
+    fetchProfile()
+
+    // Subscribe to profile changes
+    const channel = supabase
+      .channel('profile_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${session?.user?.id}`,
+        },
+        (payload) => {
+          setProfile(payload.new as Profile)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session?.user?.id, supabase])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  return (
+    <aside className="h-screen flex flex-col px-2 py-4">
       {/* Navigation */}
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 mt-4">
         {navItems.map((item) => (
           <Link
             key={item.label}
             href={item.href}
-            className="flex items-center gap-4 p-3 rounded-full hover:bg-white/5 transition-colors"
+            className="flex items-center gap-4 p-4 rounded-full hover:bg-white/10 transition-all group"
           >
-            <item.icon className="h-5 w-5 text-white" />
-            <span className="hidden lg:inline text-white/90 text-sm truncate">
+            <item.icon className="h-6 w-6 text-white group-hover:text-[#59F6E8] transition-colors" />
+            <span className="hidden lg:inline text-lg text-white/90 group-hover:text-white transition-colors">
               {item.label}
             </span>
           </Link>
         ))}
       </nav>
 
-      {/* New Post Button */}
-      <div className="hidden lg:block p-2">
+      {/* Post Button */}
+      <div className="px-4 my-4">
         <NewTweetDialog>
-          <Button className="w-full lg:w-auto bg-[#6B46CC] hover:bg-[#5A37A7] rounded-full py-2 text-sm font-bold">
-            <Plus className="mr-2 h-4 w-4" />
-            Post
+          <Button className="w-full bg-[#6B46CC] hover:bg-[#5A37A7] rounded-full py-6 text-base font-bold transition-all hover:shadow-lg hover:shadow-purple-500/20">
+            <Plus className="lg:hidden h-6 w-6" />
+            <span className="hidden lg:inline">Post</span>
           </Button>
         </NewTweetDialog>
       </div>
 
       {/* Profile Section */}
-      <Link
-        href="/profile"
-        className="mt-auto p-2 flex items-center gap-3 rounded-full hover:bg-white/5 transition-colors"
-      >
-        <Avatar className="h-10 w-10">
-          <AvatarImage
-            src={user?.user_metadata?.avatar_url}
-            alt="Profile"
-          />
-          <AvatarFallback className="bg-[#59F6E8] text-[#16141D]">
-            {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-
-        <div className="hidden lg:block">
-          <p className="text-white font-semibold truncate text-sm max-w-[150px]">
-            {user?.user_metadata?.full_name || user?.email}
-          </p>
-          <p className="text-sm text-white/60 truncate max-w-[150px]">
-            @{user?.user_metadata?.username || 'user'}
-          </p>
+      {profile && (
+        <div className="mt-auto">
+          <button
+            onClick={() => router.push(`/profile/${profile.username}`)}
+            className="w-full p-4 flex items-center gap-3 rounded-full hover:bg-white/10 transition-all group relative"
+          >
+            <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
+              <AvatarImage src={profile.avatar_url} className="object-cover" />
+              <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+                {profile.full_name[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden lg:block flex-1 text-left">
+              <div className="font-bold text-white truncate max-w-[150px]">{profile.full_name}</div>
+              <div className="text-gray-500 text-sm truncate max-w-[150px]">
+                @{profile.username}
+              </div>
+            </div>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleSignOut()
+              }}
+              variant="ghost"
+              size="icon"
+              className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 rounded-full transition-all"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </button>
         </div>
-      </Link>
+      )}
     </aside>
   )
 }

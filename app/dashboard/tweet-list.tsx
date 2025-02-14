@@ -1,6 +1,8 @@
+'use client'
+
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
+import { formatDistanceToNow as formatDateDistance } from 'date-fns' // Renamed to avoid conflict
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Heart, MessageSquareIcon, Repeat } from 'lucide-react'
@@ -40,7 +42,7 @@ const TweetCard: React.FC<TweetCardProps> = ({ tweet, onLike, onRetweet, onReply
   const handleRetweet = () => onRetweet?.(tweet.id)
   const handleReply = () => onReply?.(tweet.id)
 
-  const formattedDate = formatDistanceToNow(new Date(tweet.created_at), {
+  const formattedDate = formatDateDistance(new Date(tweet.created_at), {
     addSuffix: true,
   })
 
@@ -116,7 +118,7 @@ export default function TweetList() {
     try {
       const { data, error } = await supabase
         .from('tweets')
-        .select('*, profiles:user_id (*)')
+        .select('*, profiles (*)')
         .order('created_at', { ascending: false })
 
       if (error) throw error

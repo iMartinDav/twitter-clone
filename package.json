@@ -1,7 +1,7 @@
 {
   "name": "twitter-clone",
   "version": "0.1.0",
-  "packageManager": "pnpm@10.3.0",
+  "packageManager": "pnpm@10.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -53,8 +53,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
-    "date-fns": "3.0.0",
+    "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
+    "framer-motion": "^12.4.3",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "15.1.7",
@@ -69,6 +70,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.0.5",
     "vaul": "^0.9.9",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
@@ -78,6 +80,7 @@
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/uuid": "^10.0.0",
     "concurrently": "^9.1.2",
     "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.5.2",

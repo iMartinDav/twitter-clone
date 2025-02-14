@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import TweetCard from './tweet-card'
@@ -12,29 +14,24 @@ interface Tweet {
   }
 }
 
-export default function TweetList({ initialTweets }: { initialTweets: Tweet[] }) {
-  const [tweets, setTweets] = useState<Tweet[]>(initialTweets)
-  const supabase = createClientComponentClient()
+interface TweetListProps {
+  initialTweets: Tweet[]
+  userId?: string
+}
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('realtime tweets')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tweets' }, (payload) => {
-        const newTweet = payload.new as Tweet
-        setTweets((currentTweets) => [newTweet, ...currentTweets])
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [supabase])
-
+export default function TweetList({ initialTweets, userId }: TweetListProps) {
   return (
-    <div className="space-y-4">
-      {tweets.map((tweet) => (
-        <TweetCard key={tweet.id} tweet={tweet} />
+    <div className="divide-y divide-[#2F3336]">
+      {initialTweets.map((tweet) => (
+        <div key={tweet.id} className="p-4">
+          <div className="font-medium">{tweet.user.name}</div>
+          <div className="text-gray-500">@{tweet.user.username}</div>
+          <p className="mt-2">{tweet.content}</p>
+        </div>
       ))}
+      {initialTweets.length === 0 && (
+        <div className="p-4 text-center text-gray-500">No tweets yet</div>
+      )}
     </div>
   )
 }

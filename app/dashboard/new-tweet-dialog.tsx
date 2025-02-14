@@ -1,31 +1,26 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUser } from '@/lib/user-hook';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Gift, ImagePlus, List, Smile, MapPin, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useUser } from '@/lib/user-hook'
+import { useToast } from '@/components/ui/use-toast'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Gift, ImagePlus, List, Smile, MapPin, X } from 'lucide-react'
 
-type ActionIconType = typeof Gift | typeof ImagePlus | typeof List | typeof Smile | typeof MapPin;
+type ActionIconType = typeof Gift | typeof ImagePlus | typeof List | typeof Smile | typeof MapPin
 
 interface ActionIcon {
-  icon: ActionIconType;
-  label: string;
+  icon: ActionIconType
+  label: string
 }
 
 interface NewTweetDialogProps {
-  children: React.ReactElement;
-  onTweetPosted?: () => void;
-  maxLength?: number;
+  children: React.ReactElement
+  onTweetPosted?: () => void
+  maxLength?: number
 }
 
 const ACTIONS: ActionIcon[] = [
@@ -34,63 +29,61 @@ const ACTIONS: ActionIcon[] = [
   { icon: List, label: 'Add list' },
   { icon: Smile, label: 'Add emoji' },
   { icon: MapPin, label: 'Add location' },
-];
+]
 
 export default function NewTweetDialog({
   children,
   onTweetPosted,
-  maxLength = 280
+  maxLength = 280,
 }: NewTweetDialogProps) {
-  const [content, setContent] = useState('');
-  const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useUser();
-  const { toast } = useToast();
-  const router = useRouter();
+  const [content, setContent] = useState('')
+  const [open, setOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useUser()
+  const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
-    console.log('User data:', user);
-  }, [user]);
+    console.log('User data:', user)
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || isSubmitting) return;
+    e.preventDefault()
+    if (!content.trim() || isSubmitting) return
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       // Your API call would go here
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulated API call
+      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulated API call
 
-      toast({ title: 'Success', description: 'Tweet posted!' });
-      setContent('');
-      setOpen(false);
-      router.refresh();
-      onTweetPosted?.();
+      toast({ title: 'Success', description: 'Tweet posted!' })
+      setContent('')
+      setOpen(false)
+      router.refresh()
+      onTweetPosted?.()
     } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to post tweet',
         variant: 'destructive',
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const getInitials = (name?: string, email?: string): string => {
-    if (name) return name.charAt(0).toUpperCase();
-    if (email) return email.charAt(0).toUpperCase();
-    return '?';
-  };
+    if (name) return name.charAt(0).toUpperCase()
+    if (email) return email.charAt(0).toUpperCase()
+    return '?'
+  }
 
-  const characterCount = content.length;
-  const isOverLimit = characterCount > maxLength;
+  const characterCount = content.length
+  const isOverLimit = characterCount > maxLength
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {React.Children.only(children)}
-      </DialogTrigger>
+      <DialogTrigger asChild>{React.Children.only(children)}</DialogTrigger>
       <DialogContent className="sm:max-w-[600px] p-0 bg-[#16141D] border-2 border-[#25252C]">
         <DialogTitle className="sr-only">New Tweet</DialogTitle>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -106,13 +99,12 @@ export default function NewTweetDialog({
             </Avatar>
             <div className="flex-1 space-y-2">
               <Textarea
-                placeholder="What's happening?!"
+                placeholder="What is happening ?!"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="text-xl bg-transparent border-none text-white focus:ring-0 min-h-[120px] resize-none p-0"
+                className="text-xl bg-transparent border-none text-[#9898c5] placeholder-[#9ca3af] focus:placeholder-[#6b7280] focus:ring-0 resize-none p-0 min-h-[56px]"
                 required
                 maxLength={maxLength}
-                aria-label="Tweet content"
               />
               <div className="text-sm text-gray-400 text-right">
                 {characterCount}/{maxLength}
@@ -145,5 +137,5 @@ export default function NewTweetDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
