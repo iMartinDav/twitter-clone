@@ -1,5 +1,3 @@
-'use client'
-
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
@@ -123,9 +121,8 @@ export default function TweetList() {
 
       if (error) throw error
       setTweets(data || [])
-    } catch (error) {
-      console.error('Error loading tweets:', error)
-      // Handle error appropriately - could show toast notification
+    } catch (error: any) {
+      console.error('Error loading tweets:', error.message)
     }
   }, [supabase])
 
