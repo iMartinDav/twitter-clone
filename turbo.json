@@ -1,0 +1,29 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": [],
+      "cache": false,
+      "inputs": ["src/**/*.ts*", "src/**/*.js*"]
+    },
+    "format": {
+      "outputs": [],
+      "cache": false,
+      "inputs": ["**/*.{js,jsx,ts,tsx,json,css,scss,md}"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": [],
+      "inputs": ["src/**/*.ts*", "src/**/*.js*"]
+    }
+  }
+}
