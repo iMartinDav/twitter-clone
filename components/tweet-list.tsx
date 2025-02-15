@@ -1,33 +1,21 @@
+// components/Tweet/ProfileTweetList.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import TweetCard from './tweet-card'
+import { Tweet } from '@/types/tweet'
+import { TweetCard } from '@/app/dashboard/tweet-card'
 
-interface Tweet {
-  id: string
-  content: string
-  created_at: string
-  user: {
-    name: string
-    username: string
-  }
-}
-
-interface TweetListProps {
+interface ProfileTweetListProps {
   initialTweets: Tweet[]
   userId?: string
 }
 
-export default function TweetList({ initialTweets, userId }: TweetListProps) {
+export default function ProfileTweetList({ initialTweets, userId }: ProfileTweetListProps) {
+  console.log('initialTweets in Profile TweetList:', initialTweets)
+
   return (
     <div className="divide-y divide-[#2F3336]">
       {initialTweets.map((tweet) => (
-        <div key={tweet.id} className="p-4">
-          <div className="font-medium">{tweet.user.name}</div>
-          <div className="text-gray-500">@{tweet.user.username}</div>
-          <p className="mt-2">{tweet.content}</p>
-        </div>
+        <TweetCard key={tweet.id} tweet={tweet} />
       ))}
       {initialTweets.length === 0 && (
         <div className="p-4 text-center text-gray-500">No tweets yet</div>

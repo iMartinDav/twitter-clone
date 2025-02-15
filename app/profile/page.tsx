@@ -1,3 +1,4 @@
+// app/profile/page.tsx
 'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -13,23 +14,14 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Database } from '@/types/supabase'
-import TweetList from '@/components/tweet-list'
+import ProfileTweetList from '@/components/tweet-list'
+import { Tweet } from '@/types/tweet'
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-
-interface Tweet {
-  id: string
-  content: string
-  created_at: string
-  user: {
-    name: string
-    username: string
-  }
-}
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
 
 export default function ProfilePage({ params }: { params: { username?: string } }) {
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [tweets, setTweets] = useState<Tweet[]>([])
+  const [profile, setProfile] = useState<ProfileRow | null>(null)
+  const [tweets, setTweets] = useState<Tweet[]>([]) // Use your Tweet type
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('tweets')
   const [isEditing, setIsEditing] = useState(false)
@@ -61,16 +53,17 @@ export default function ProfilePage({ params }: { params: { username?: string } 
         return
       }
 
-      const query = supabase
-        .from('profiles')
-        .select('*, tweets(*)')
-        .order('created_at', { referencedTable: 'tweets', ascending: false })
+      let profileQuery = supabase.from('profiles').select('*')
 
-      const finalQuery = params.username
-        ? query.eq('username', params.username)
-        : query.eq('user_id', session.user.id)
+      if (params.username) {
+        profileQuery = profileQuery.eq('username', params.username)
+      } else if (session?.user?.id) {
+        profileQuery = profileQuery.eq('user_id', session.user.id)
+      } else {
+        return
+      }
 
-      const { data: profileData, error: profileError } = await finalQuery.single()
+      const { data: profileData, error: profileError } = await profileQuery.single()
 
       if (profileError) {
         if (profileError.code === 'PGRST116') {
@@ -82,7 +75,20 @@ export default function ProfilePage({ params }: { params: { username?: string } 
 
       if (profileData) {
         setProfile(profileData)
-        setTweets(profileData.tweets || [])
+
+        // Fetch tweets, joining with profiles to get user data - Adjusted query
+        const { data: tweetData, error: tweetError } = await supabase
+          .from('tweets')
+          .select('*, user:profiles(full_name, username, avatar_url)') // Fetch nested user profile
+          .eq('user_id', profileData.user_id)
+          .order('created_at', { ascending: false })
+
+        if (tweetError) {
+          throw tweetError
+        }
+
+        // No transformation needed now, data should match Tweet type closely
+        setTweets((tweetData as Tweet[]) || []) // Directly use tweetData with type assertion
       }
     } catch (error) {
       console.error('Error:', error)
@@ -94,13 +100,13 @@ export default function ProfilePage({ params }: { params: { username?: string } 
     } finally {
       setIsLoading(false)
     }
-  }, [params.username, router, supabase, toast])
+  }, [params.username, router, supabase, toast, session?.user?.id])
 
   useEffect(() => {
     fetchProfileData()
   }, [fetchProfileData])
 
-  const handleProfileUpdate = async (updatedProfile: Partial<Profile>) => {
+  const handleProfileUpdate = async (updatedProfile: Partial<ProfileRow>) => {
     try {
       const {
         data: { session },
@@ -136,7 +142,7 @@ export default function ProfilePage({ params }: { params: { username?: string } 
   }
 
   const formatJoinDate = (dateString?: string) =>
-    dateString ? format(new Date(dateString), 'MMMM yyyy') : 'Unknown date'
+    dateString ? format(new Date(dateString), 'MMMM') : 'Unknown date'
 
   if (isLoading) return <ProfileSkeleton />
 
@@ -156,7 +162,9 @@ export default function ProfilePage({ params }: { params: { username?: string } 
             <ArrowLeft className="h-4 w-4 text-white" />
           </Button>
           <div className="flex flex-col justify-center">
-            <h1 className="text-lg font-bold text-white leading-5">{profile?.full_name || 'Profile'}</h1>
+            <h1 className="text-lg font-bold text-white leading-5">
+              {profile?.full_name || 'Profile'}
+            </h1>
             <p className="text-xs text-gray-500 leading-4">{tweets.length} posts</p>
           </div>
         </div>
@@ -216,7 +224,7 @@ export default function ProfilePage({ params }: { params: { username?: string } 
                     variant="outline"
                     className="group relative px-6 py-2 overflow-hidden rounded-full border-2 border-white/20 bg-background/50 backdrop-blur-md transition-all hover:border-white/40 hover:bg-background/70"
                   >
-                    <span className="absolute inset-0 bg-gradient-to-r from-violet-600/20 via-purple-500/20 to-fuchsia-500/20 opacity-0 transition-opacity group-hover:opacity-100" />
+                    <span className="absolute inset-0 bg-gradient-to-r from-violet-600/20 via-purple-500/20 to-fuchsia-500/30 opacity-0 transition-opacity group-hover:opacity-100" />
                     <span className="relative flex items-center gap-2 text-sm font-medium text-white">
                       <span className="relative">Edit profile</span>
                     </span>
@@ -325,7 +333,8 @@ export default function ProfilePage({ params }: { params: { username?: string } 
             transition={{ duration: 0.2 }}
             className="divide-y divide-[#2F3336]"
           >
-            <TweetList initialTweets={tweets} userId={profile?.id} />
+            <ProfileTweetList initialTweets={tweets} userId={profile?.id} />{' '}
+            {/* Use ProfileTweetList here */}
           </motion.div>
         </AnimatePresence>
       </div>

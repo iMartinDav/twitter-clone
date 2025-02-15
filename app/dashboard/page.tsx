@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -28,15 +29,7 @@ import { TweetActionButton } from '@/components/tweet/tweet-action-button'
 import { useTweetInteractions } from '@/hooks/use-tweet-interactions'
 import { useProfile } from '@/hooks/use-profile'
 import type { Database } from '@/types/supabase'
-import type { Profile } from '@/types/profile'
-
-interface Tweet {
-  id: string
-  content: string
-  user_id: string
-  created_at: string
-  user: Database['public']['Tables']['profiles']['Row']
-}
+import type { Tweet } from '@/types/tweet'
 
 const ACTIONS = [
   { icon: ImagePlus, label: 'Media' },
@@ -51,12 +44,14 @@ export default function Dashboard() {
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
   const { interactions, handleLike, fetchTweetInteractions } = useTweetInteractions()
-  
+
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tweets, setTweets] = useState<Tweet[]>([])
   const [isMounted, setIsMounted] = useState(false)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(
+    null,
+  )
 
   const maxLength = 280
   const remainingChars = maxLength - content.length
@@ -71,18 +66,23 @@ export default function Dashboard() {
     return name.charAt(0).toUpperCase()
   }, [])
 
-  const renderAvatar = useCallback((avatarUrl: string | null | undefined, fullName?: string, className = "h-12 w-12") => (
-    <Avatar className={`${className} border-2 border-transparent hover:border-[#59F6E8] transition-all`}>
-      <AvatarImage 
-        src={avatarUrl || undefined}
-        className="object-cover"
-        alt={fullName || 'Profile picture'}
-      />
-      <AvatarFallback className="bg-[#352f4d] text-white text-lg">
-        {getAvatarFallback(fullName)}
-      </AvatarFallback>
-    </Avatar>
-  ), [getAvatarFallback])
+  const renderAvatar = useCallback(
+    (avatarUrl: string | null | undefined, fullName?: string, className = 'h-12 w-12') => (
+      <Avatar
+        className={`${className} border-2 border-transparent hover:border-[#59F6E8] transition-all`}
+      >
+        <AvatarImage
+          src={avatarUrl || undefined}
+          className="object-cover"
+          alt={fullName || 'Profile picture'}
+        />
+        <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+          {getAvatarFallback(fullName)}
+        </AvatarFallback>
+      </Avatar>
+    ),
+    [getAvatarFallback],
+  )
 
   const fetchTweets = useCallback(async () => {
     try {
@@ -92,7 +92,7 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setTweets(data)
+      setTweets(data as Tweet[])
     } catch (error) {
       console.error('Error fetching tweets:', error)
       toast({ title: 'Error', description: 'Failed to load tweets', variant: 'destructive' })
@@ -197,7 +197,7 @@ export default function Dashboard() {
           filter: `user_id=eq.${session.user.id}`,
         },
         (payload) => {
-          setProfile(payload.new as Profile)
+          setProfile(payload.new as Database['public']['Tables']['profiles']['Row'])
         },
       )
       .subscribe()
@@ -319,7 +319,9 @@ export default function Dashboard() {
                 <Button
                   type="submit"
                   className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] h-8 px-4 text-sm font-bold"
-                  disabled={isSubmitting || !content.trim() || content.length > maxLength || !session}
+                  disabled={
+                    isSubmitting || !content.trim() || content.length > maxLength || !session
+                  }
                 >
                   {isSubmitting ? 'Posting...' : 'Post'}
                 </Button>

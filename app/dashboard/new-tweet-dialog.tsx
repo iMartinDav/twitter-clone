@@ -1,5 +1,3 @@
-'use client'
-
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -7,9 +5,16 @@ import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Gift, ImagePlus, List, Smile, MapPin } from 'lucide-react'
+import { Gift, ImagePlus, List, Smile, MapPin, X, Loader2 } from 'lucide-react'
 
 interface Profile {
   id: string
@@ -33,8 +38,8 @@ interface NewTweetDialogProps {
 }
 
 const ACTIONS: ActionIcon[] = [
-  { icon: Gift, label: 'Add gift' },
   { icon: ImagePlus, label: 'Add image' },
+  { icon: Gift, label: 'Add gift' },
   { icon: List, label: 'Add list' },
   { icon: Smile, label: 'Add emoji' },
   { icon: MapPin, label: 'Add location' },
@@ -74,7 +79,6 @@ export default function NewTweetDialog({
 
     fetchProfile()
 
-    // Subscribe to profile changes
     const channel = supabase
       .channel('profile_changes')
       .on(
@@ -98,12 +102,15 @@ export default function NewTweetDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim() || isSubmitting) return
+    if (!content.trim() || isSubmitting || !user) return
 
     setIsSubmitting(true)
     try {
-      // Your API call would go here
-      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulated API call
+      const { error } = await supabase
+        .from('tweets')
+        .insert([{ content: content.trim(), user_id: user.id }])
+
+      if (error) throw error
 
       toast({ title: 'Success', description: 'Tweet posted!' })
       setContent('')
@@ -123,60 +130,87 @@ export default function NewTweetDialog({
 
   const characterCount = content.length
   const isOverLimit = characterCount > maxLength
+  const remainingChars = maxLength - characterCount
+  const progressPercentage = (characterCount / maxLength) * 100
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{React.Children.only(children)}</DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] p-0 bg-[#16141D] border-2 border-[#25252C]">
-        <DialogTitle className="sr-only">New Tweet</DialogTitle>
+      <DialogContent className="w-full max-w-[600px] p-0 bg-[#16141D] border border-[#25252C] rounded-xl shadow-2xl">
+        <DialogHeader className="border-b border-[#25252C] px-4 py-2">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-[#9898c5] text-lg font-medium text-center flex-1">
+              Create Post
+            </DialogTitle>
+          </div>
+        </DialogHeader>
+
+        <DialogDescription className="sr-only">A dialog to create a new tweet.</DialogDescription>
+
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div className="flex items-start gap-4">
-            <Avatar className="h-12 w-12 shrink-0 border-2 border-transparent hover:border-[#59F6E8] transition-all">
-              <AvatarImage 
-                src={profile?.avatar_url} 
+          <div className="flex gap-4">
+            <Avatar className="h-10 w-10 shrink-0 ring-2 ring-transparent hover:ring-[#59F6E8] transition-all duration-300">
+              <AvatarImage
+                src={profile?.avatar_url}
                 className="object-cover"
-                alt={profile?.full_name || 'Profile picture'} 
+                alt={profile?.full_name || 'Profile picture'}
               />
-              <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+              <AvatarFallback className="bg-[#352f4d] text-white">
                 {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">
               <Textarea
-                placeholder="What is happening ?!"
+                placeholder="What's on your mind?"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="text-xl bg-transparent border-none text-[#9898c5] placeholder-[#9ca3af] focus:placeholder-[#6b7280] focus:ring-0 resize-none p-0 min-h-[56px]"
+                className="text-lg bg-transparent border-none text-[#9898c5] placeholder-[#9ca3af] focus:placeholder-[#6b7280] focus:ring-0 resize-none p-0 min-h-[120px]"
                 required
                 maxLength={maxLength}
               />
-              <div className="text-sm text-gray-400 text-right">
-                {characterCount}/{maxLength}
-              </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-[#2F3336]">
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between pt-4 border-t border-[#25252C]">
+            <div className="flex gap-1">
               {ACTIONS.map(({ icon: Icon, label }) => (
                 <Button
                   key={label}
                   variant="ghost"
                   size="icon"
-                  className="rounded-full hover:bg-[#2F3336] transition-colors"
+                  className="rounded-full w-9 h-9 hover:bg-[#2F3336]/50 transition-all duration-200"
                   aria-label={label}
                 >
-                  <Icon className="h-5 w-5 text-[#6B46CC] hover:bg-[#5A37A7]" />
+                  <Icon className="h-5 w-5 text-[#6B46CC] transition-colors" />
                 </Button>
               ))}
             </div>
-            <Button
-              type="submit"
-              className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] text-white px-6 py-2 font-bold transition-colors"
-              disabled={isSubmitting || !content.trim() || isOverLimit}
-            >
-              {isSubmitting ? 'Posting...' : 'Post'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="h-1 w-24 bg-[#2F3336] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#6B46CC] transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <span
+                className={`text-sm ${
+                  remainingChars <= 20
+                    ? 'text-red-400'
+                    : remainingChars <= 50
+                      ? 'text-yellow-400'
+                      : 'text-[#9898c5]'
+                }`}
+              >
+                {remainingChars}
+              </span>
+              <Button
+                type="submit"
+                className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] text-white px-6 py-2 font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting || !content.trim() || isOverLimit}
+              >
+                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Post'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

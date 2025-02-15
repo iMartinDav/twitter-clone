@@ -5,7 +5,17 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
-import { Home, Search, Bell, MessageSquare, List, User as UserIcon, Settings, Plus, LogOut } from 'lucide-react'
+import {
+  Home,
+  Search,
+  Bell,
+  MessageSquare,
+  List,
+  User as UserIcon,
+  Settings,
+  Plus,
+  LogOut,
+} from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import NewTweetDialog from './new-tweet-dialog'
 import { Button } from '@/components/ui/button'

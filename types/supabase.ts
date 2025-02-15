@@ -10,13 +10,7 @@ export interface UploadResponse {
   publicUrl: string
 }
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   public: {
@@ -152,4 +146,7 @@ export interface RealtimeDeletePayload<T> {
   table: string
 }
 
-export type RealtimePayload<T> = RealtimeInsertPayload<T> | RealtimeUpdatePayload<T> | RealtimeDeletePayload<T>
+export type RealtimePayload<T> =
+  | RealtimeInsertPayload<T>
+  | RealtimeUpdatePayload<T>
+  | RealtimeDeletePayload<T>

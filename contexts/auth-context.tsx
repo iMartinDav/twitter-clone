@@ -1,15 +1,16 @@
 'use client'
-
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useState } from 'react'
-import type { User, Session } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useMemo, useCallback, useState } from 'react'
+import type { User, Session, SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/supabase'
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
   signOut: () => Promise<void>
+  supabaseClient: SupabaseClient<Database> | null
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   signOut: async () => {},
+  supabaseClient: null,
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -24,58 +26,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
 
   useEffect(() => {
+    const client = createClientComponentClient<Database>()
+    setSupabase(client)
+
     const initializeAuth = async () => {
       try {
-        // Get initial session
         const {
           data: { session: initialSession },
-        } = await supabase.auth.getSession()
-        if (initialSession) {
-          setSession(initialSession)
-          setUser(initialSession.user)
-        }
+        } = await client.auth.getSession()
+        setSession(initialSession)
+        setUser(initialSession?.user ?? null)
 
-        // Set up auth state change listener
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-          setSession(session)
-          setUser(session?.user ?? null)
+        } = client.auth.onAuthStateChange((_event, newSession) => {
+          setSession(newSession)
+          setUser(newSession?.user ?? null)
           router.refresh()
         })
 
-        setLoading(false)
-        return () => subscription.unsubscribe()
+        return () => subscription?.unsubscribe()
       } catch (error) {
         console.error('Auth initialization error:', error)
+      } finally {
         setLoading(false)
       }
     }
 
     initializeAuth()
-  }, [supabase, router])
+  }, [router])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    if (!supabase) return
     await supabase.auth.signOut()
     router.push('/login')
-  }
+  }, [supabase, router])
 
-  const value = {
-    user,
-    session,
-    loading,
-    signOut,
-  }
+  const contextValue = useMemo(
+    () => ({
+      user,
+      session,
+      loading,
+      signOut,
+      supabaseClient: supabase,
+    }),
+    [user, session, loading, signOut, supabase],
+  )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {!loading ? (
+        children
+      ) : (
+        <div className="flex justify-center p-4">Loading authentication...</div>
+      )}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
