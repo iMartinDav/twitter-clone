@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
-import { Home, Search, Bell, MessageSquare, List, User, Settings, Plus, LogOut } from 'lucide-react'
+import { Home, Search, Bell, MessageSquare, List, User as UserIcon, Settings, Plus, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import NewTweetDialog from './new-tweet-dialog'
 import { Button } from '@/components/ui/button'
@@ -18,19 +18,23 @@ interface Profile {
   bio: string
 }
 
+interface SidebarProps {
+  user: User
+}
+
 const navItems = [
-  { icon: Home, label: 'Home', href: '#' },
+  { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Search, label: 'Search', href: '#' },
   { icon: Bell, label: 'Notifications', href: '#' },
   { icon: MessageSquare, label: 'Chat', href: '#' },
   { icon: List, label: 'Feeds', href: '#' },
   { icon: List, label: 'Lists', href: '#' },
-  { icon: User, label: 'Profile', href: '/profile' },
+  { icon: UserIcon, label: 'Profile', href: '/profile' },
   { icon: Settings, label: 'Settings', href: '#' },
 ]
 
-export default function Sidebar() {
-  const { user, session } = useAuth()
+export default function Sidebar({ user }: SidebarProps) {
+  const { session } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
