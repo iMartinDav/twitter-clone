@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { FaSquareXTwitter } from 'react-icons/fa6'
 import {
   ImagePlus,
@@ -49,9 +49,8 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tweets, setTweets] = useState<Tweet[]>([])
   const [isMounted, setIsMounted] = useState(false)
-  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(
-    null,
-  )
+  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(null)
+  const [isHovered, setIsHovered] = useState<string | null>(null)
 
   const maxLength = 280
   const remainingChars = maxLength - content.length

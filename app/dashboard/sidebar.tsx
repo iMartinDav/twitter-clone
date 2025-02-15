@@ -1,10 +1,11 @@
+// app/dashboard/sidebar.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs'
-import { useAuth } from '@/contexts/auth-context'
-import Link from 'next/link'
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs';
+import { useAuth } from '@/contexts/auth-context';
+import Link from 'next/link';
 import {
   Home,
   Search,
@@ -15,59 +16,48 @@ import {
   Settings,
   Plus,
   LogOut,
-} from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import NewTweetDialog from './new-tweet-dialog'
-import { Button } from '@/components/ui/button'
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import NewTweetDialog from './new-tweet-dialog';
+import { Button } from '@/components/ui/button';
 
 interface Profile {
-  id: string
-  full_name: string
-  username: string
-  avatar_url: string
-  bio: string
+  id: string;
+  full_name: string;
+  username: string;
+  avatar_url: string;
+  bio: string;
 }
 
 interface SidebarProps {
-  user: User
+  user: User;
 }
 
-const navItems = [
-  { icon: Home, label: 'Home', href: '/dashboard' },
-  { icon: Search, label: 'Search', href: '#' },
-  { icon: Bell, label: 'Notifications', href: '#' },
-  { icon: MessageSquare, label: 'Chat', href: '#' },
-  { icon: List, label: 'Feeds', href: '#' },
-  { icon: List, label: 'Lists', href: '#' },
-  { icon: UserIcon, label: 'Profile', href: '/profile' },
-  { icon: Settings, label: 'Settings', href: '#' },
-]
-
 export default function Sidebar({ user }: SidebarProps) {
-  const { session } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const router = useRouter()
-  const supabase = createClientComponentClient()
+  const { session } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const router = useRouter();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!session?.user?.id) return
+      if (!session?.user?.id) return;
 
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', session.user.id)
-          .single()
+          .single();
 
-        if (error) throw error
-        if (data) setProfile(data)
+        if (error) throw error;
+        if (data) setProfile(data);
       } catch (error) {
-        console.error('Error fetching profile:', error)
+        console.error('Error fetching profile:', error);
       }
-    }
+    };
 
-    fetchProfile()
+    fetchProfile();
 
     // Subscribe to profile changes
     const channel = supabase
@@ -81,20 +71,36 @@ export default function Sidebar({ user }: SidebarProps) {
           filter: `user_id=eq.${session?.user?.id}`,
         },
         (payload) => {
-          setProfile(payload.new as Profile)
+          setProfile(payload.new as Profile);
         },
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [session?.user?.id, supabase])
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id, supabase]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
+  // Define navItems inside the component
+  const navItems = [
+    { icon: Home, label: 'Home', href: '/dashboard' },
+    { icon: Search, label: 'Search', href: '#' },
+    { icon: Bell, label: 'Notifications', href: '#' },
+    { icon: MessageSquare, label: 'Chat', href: '#' },
+    { icon: List, label: 'Feeds', href: '#' },
+    { icon: List, label: 'Lists', href: '#' },
+    {
+      icon: UserIcon,
+      label: 'Profile',
+      href: profile ? `/profile/${profile.username}` : '/profile',
+    },
+    { icon: Settings, label: 'Settings', href: '#' },
+  ];
 
   return (
     <aside className="h-screen flex flex-col px-2 py-4">
@@ -145,8 +151,8 @@ export default function Sidebar({ user }: SidebarProps) {
             </div>
             <Button
               onClick={(e) => {
-                e.stopPropagation()
-                handleSignOut()
+                e.stopPropagation();
+                handleSignOut();
               }}
               variant="ghost"
               size="icon"
@@ -158,5 +164,5 @@ export default function Sidebar({ user }: SidebarProps) {
         </div>
       )}
     </aside>
-  )
+  );
 }

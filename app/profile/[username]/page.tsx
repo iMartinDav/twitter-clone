@@ -1,152 +1,147 @@
-// app/profile/page.tsx
-'use client'
+// app/profile/[username]/page.tsx
+"use client"
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Calendar, Link as LinkIcon, MapPin, Share2, ArrowLeft } from 'lucide-react'
-import { format } from 'date-fns'
-import { useToast } from '@/components/ui/use-toast'
-import { EditProfileDialog } from '@/components/edit-profile-dialog'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
-import { motion, AnimatePresence } from 'framer-motion'
-import type { Database } from '@/types/supabase'
-import ProfileTweetList from '@/components/tweet-list'
-import { Tweet } from '@/types/tweet'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Calendar, Link as LinkIcon, MapPin, Share2, ArrowLeft } from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/components/ui/use-toast';
+import { EditProfileDialog } from '@/components/edit-profile-dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Database } from '@/types/supabase';
+import ProfileTweetList from '@/components/tweet-list';
+import { Tweet } from '@/types/tweet';
 
-type ProfileRow = Database['public']['Tables']['profiles']['Row']
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
-export default function ProfilePage({ params }: { params: { username?: string } }) {
-  const [profile, setProfile] = useState<ProfileRow | null>(null)
-  const [tweets, setTweets] = useState<Tweet[]>([]) // Use your Tweet type
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('tweets')
-  const [isEditing, setIsEditing] = useState(false)
-  const [session, setSession] = useState<any>(null)
-  const [scrollPosition, setScrollPosition] = useState(0)
-  const headerRef = useRef<HTMLDivElement>(null)
+export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('tweets');
+  const [isEditing, setIsEditing] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const headerRef = useRef<HTMLDivElement>(null);
 
-  const supabase = createClientComponentClient<Database>()
-  const router = useRouter()
-  const { toast } = useToast()
+  const supabase = createClientComponentClient<Database>();
+  const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrollPosition(window.scrollY)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+      setScrollPosition(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const fetchProfileData = useCallback(async () => {
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
-      setSession(session)
+      } = await supabase.auth.getSession();
+      setSession(session);
 
       if (!session) {
-        router.push('/login')
-        return
+        router.push('/login');
+        return;
       }
 
-      let profileQuery = supabase.from('profiles').select('*')
+      // Unwrap the params object
+      const { username } = await params;
 
-      if (params.username) {
-        profileQuery = profileQuery.eq('username', params.username)
-      } else if (session?.user?.id) {
-        profileQuery = profileQuery.eq('user_id', session.user.id)
-      } else {
-        return
-      }
-
-      const { data: profileData, error: profileError } = await profileQuery.single()
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single();
 
       if (profileError) {
         if (profileError.code === 'PGRST116') {
-          router.push('/404')
-          return
+          router.push('/404');
+          return;
         }
-        throw profileError
+        throw profileError;
       }
 
       if (profileData) {
-        setProfile(profileData)
+        setProfile(profileData);
 
-        // Fetch tweets, joining with profiles to get user data - Adjusted query
         const { data: tweetData, error: tweetError } = await supabase
           .from('tweets')
-          .select('*, user:profiles(full_name, username, avatar_url)') // Fetch nested user profile
+          .select('*, user:profiles(full_name, username, avatar_url)')
           .eq('user_id', profileData.user_id)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (tweetError) {
-          throw tweetError
+          throw tweetError;
         }
 
-        // No transformation needed now, data should match Tweet type closely
-        setTweets((tweetData as Tweet[]) || []) // Directly use tweetData with type assertion
+        setTweets((tweetData as Tweet[]) || []);
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error:', error);
       toast({
         title: 'Error',
         description: 'Failed to load profile',
         variant: 'destructive',
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [params.username, router, supabase, toast, session?.user?.id])
+  }, [params, router, supabase, toast, session?.user?.id]);
 
   useEffect(() => {
-    fetchProfileData()
-  }, [fetchProfileData])
+    fetchProfileData();
+  }, [fetchProfileData]);
 
   const handleProfileUpdate = async (updatedProfile: Partial<ProfileRow>) => {
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
+      } = await supabase.auth.getSession();
+      if (!session) return;
 
       const { data: updatedData, error } = await supabase
         .from('profiles')
         .update(updatedProfile)
         .eq('user_id', session.user.id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (updatedData) {
-        setProfile(updatedData)
+        setProfile(updatedData);
         toast({
           title: 'Success',
           description: 'Profile updated successfully',
-        })
-        router.refresh()
+        });
+        router.refresh();
       }
 
-      setIsEditing(false)
+      setIsEditing(false);
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to update profile',
         variant: 'destructive',
-      })
+      });
     }
-  }
+  };
 
   const formatJoinDate = (dateString?: string) =>
-    dateString ? format(new Date(dateString), 'MMMM') : 'Unknown date'
+    dateString ? format(new Date(dateString), 'MMMM') : 'Unknown date';
 
-  if (isLoading) return <ProfileSkeleton />
+  if (isLoading) return <ProfileSkeleton />;
 
-  const canEdit = profile?.user_id === session?.user?.id
+  const canEdit = profile?.user_id === session?.user?.id;
 
   return (
     <div className="min-h-screen bg-background">
@@ -333,8 +328,7 @@ export default function ProfilePage({ params }: { params: { username?: string } 
             transition={{ duration: 0.2 }}
             className="divide-y divide-[#2F3336]"
           >
-            <ProfileTweetList initialTweets={tweets} userId={profile?.id} />{' '}
-            {/* Use ProfileTweetList here */}
+            <ProfileTweetList initialTweets={tweets} userId={profile?.id} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -347,7 +341,7 @@ export default function ProfilePage({ params }: { params: { username?: string } 
         onSave={handleProfileUpdate}
       />
     </div>
-  )
+  );
 }
 
 function ProfileSkeleton() {
@@ -380,5 +374,5 @@ function ProfileSkeleton() {
         </div>
       </div>
     </div>
-  )
+  );
 }
