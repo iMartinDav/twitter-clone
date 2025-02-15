@@ -3,6 +3,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Database } from './supabase'
 
 export interface Tweet {
+  stats: { replies: number; retweets: number; likes: number }
   id: string
   content: string
   created_at: string

@@ -12,10 +12,6 @@ export default function LoginPage() {
 }
 
 async function LoginWrapper() {
-  // In a real application, you might have server-side checks here,
-  // but for this visual component, we'll skip authCheck for simplicity and focus on UI.
-  // await authCheck(); // Uncomment and implement authCheck if needed
-
   return <LoginPageContent />
 }
 
