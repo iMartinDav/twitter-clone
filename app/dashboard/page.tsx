@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
-import { useUser } from '@/lib/user-hook'
+import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,7 +26,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TweetActionButton } from '@/components/tweet/tweet-action-button'
 import { useTweetInteractions } from '@/hooks/use-tweet-interactions'
+import { useProfile } from '@/hooks/use-profile'
 import type { Database } from '@/types/supabase'
+import type { Profile } from '@/types/profile'
 
 interface Tweet {
   id: string
@@ -45,16 +46,17 @@ const ACTIONS = [
 ] as const
 
 export default function Dashboard() {
-  const { user } = useUser()
+  const { user, session } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
-  const { interactions, fetchTweetInteractions, handleLike } = useTweetInteractions()
-
+  const { interactions, handleLike, fetchTweetInteractions } = useTweetInteractions()
+  
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tweets, setTweets] = useState<Tweet[]>([])
   const [isMounted, setIsMounted] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
 
   const maxLength = 280
   const remainingChars = maxLength - content.length
@@ -63,6 +65,24 @@ export default function Dashboard() {
     if (remainingChars < 20) return 'text-yellow-500'
     return 'text-gray-400'
   }, [remainingChars])
+
+  const getAvatarFallback = useCallback((name?: string) => {
+    if (!name) return '?'
+    return name.charAt(0).toUpperCase()
+  }, [])
+
+  const renderAvatar = useCallback((avatarUrl: string | null | undefined, fullName?: string, className = "h-12 w-12") => (
+    <Avatar className={`${className} border-2 border-transparent hover:border-[#59F6E8] transition-all`}>
+      <AvatarImage 
+        src={avatarUrl || undefined}
+        className="object-cover"
+        alt={fullName || 'Profile picture'}
+      />
+      <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+        {getAvatarFallback(fullName)}
+      </AvatarFallback>
+    </Avatar>
+  ), [getAvatarFallback])
 
   const fetchTweets = useCallback(async () => {
     try {
@@ -146,6 +166,47 @@ export default function Dashboard() {
     }
   }, [fetchTweets, handleRealtimeLike, handleRealtimeUpdate, supabase])
 
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+
+        if (error) throw error
+        setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+      }
+    }
+
+    fetchProfile()
+
+    const channel = supabase
+      .channel('dashboard_profile')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          setProfile(payload.new as Profile)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session?.user?.id, supabase])
+
   const renderTweet = useCallback(
     (tweet: Tweet) => (
       <motion.div
@@ -155,12 +216,7 @@ export default function Dashboard() {
         className="p-4 hover:bg-white/5 transition-colors border-b border-[#2F3336]"
       >
         <div className="flex gap-4">
-          <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
-            <AvatarImage src={tweet.user.avatar_url} className="object-cover" />
-            <AvatarFallback className="bg-[#352f4d] text-white text-lg">
-              {tweet.user.full_name[0]}
-            </AvatarFallback>
-          </Avatar>
+          {renderAvatar(tweet.user.avatar_url, tweet.user.full_name)}
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-sm">
@@ -205,7 +261,7 @@ export default function Dashboard() {
         </div>
       </motion.div>
     ),
-    [interactions, user?.id, router, handleLike],
+    [interactions, user?.id, router, handleLike, renderAvatar],
   )
 
   if (!isMounted) return <LoadingSkeleton />
@@ -228,18 +284,15 @@ export default function Dashboard() {
       </header>
 
       <form onSubmit={handleSubmit} className="border-b border-[#2F3336]">
-        <div className="flex p-4 gap-4">
-          <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
-            <AvatarImage className="object-cover" />
-            <AvatarFallback className="bg-[#352f4d] text-white text-lg"></AvatarFallback>
-          </Avatar>
+        <div className="flex p-3 gap-4">
+          {renderAvatar(profile?.avatar_url, profile?.full_name)}
 
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-2">
             <Textarea
               placeholder="What is happening?!"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="text-xl bg-transparent border-none placeholder:text-muted-foreground resize-none min-h-[120px]"
+              className="text-xl bg-transparent border-none placeholder:text-muted-foreground resize-none min-h-[56px] max-h-[300px] py-2"
               maxLength={maxLength}
             />
 
@@ -258,13 +311,15 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-4">
-                <span className={`text-sm ${charCountColor}`}>
-                  {content.length}/{maxLength}
-                </span>
+                {content.length > 0 && (
+                  <span className={`text-sm ${charCountColor}`}>
+                    {content.length}/{maxLength}
+                  </span>
+                )}
                 <Button
                   type="submit"
                   className="rounded-full bg-[#6B46CC] hover:bg-[#5A37A7] h-8 px-4 text-sm font-bold"
-                  disabled={isSubmitting || !content.trim() || content.length > maxLength}
+                  disabled={isSubmitting || !content.trim() || content.length > maxLength || !session}
                 >
                   {isSubmitting ? 'Posting...' : 'Post'}
                 </Button>

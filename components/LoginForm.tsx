@@ -229,7 +229,7 @@ const LoginForm = () => {
                   disabled={formState.isLoading}
                   minLength={8}
                 />
-                <button
+                <Button
                   type="button"
                   onClick={togglePasswordVisibility}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
@@ -240,7 +240,7 @@ const LoginForm = () => {
                   ) : (
                     <LuEye className="h-5 w-5 text-gray-400" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 

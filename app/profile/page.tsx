@@ -180,7 +180,6 @@ export default function ProfilePage({ params }: { params: { username?: string } 
                 <AvatarFallback className="text-2xl bg-gradient-to-br from-[#352f4d] to-[#6B46CC] text-white">
                   {profile?.full_name?.[0]}
                 </AvatarFallback>
-                {/* Subtle hover effect */}
                 <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </Avatar>
             </div>
@@ -268,14 +267,14 @@ export default function ProfilePage({ params }: { params: { username?: string } 
               </div>
 
               <div className="flex gap-4 mt-3">
-                <button className="hover:underline">
+                <Button className="hover:underline">
                   <span className="font-bold text-white">0</span>{' '}
                   <span className="text-gray-500">Following</span>
-                </button>
-                <button className="hover:underline">
+                </Button>
+                <Button className="hover:underline">
                   <span className="font-bold text-white">0</span>{' '}
                   <span className="text-gray-500">Followers</span>
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>

@@ -113,7 +113,7 @@ export default function Sidebar() {
       {/* Profile Section */}
       {profile && (
         <div className="mt-auto">
-          <button
+          <Button
             onClick={() => router.push(`/profile/${profile.username}`)}
             className="w-full p-4 flex items-center gap-3 rounded-full hover:bg-white/10 transition-all group relative"
           >
@@ -140,7 +140,7 @@ export default function Sidebar() {
             >
               <LogOut className="h-5 w-5" />
             </Button>
-          </button>
+          </Button>
         </div>
       )}
     </aside>

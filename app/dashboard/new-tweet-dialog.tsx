@@ -2,13 +2,22 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@/lib/user-hook'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Gift, ImagePlus, List, Smile, MapPin, X } from 'lucide-react'
+import { Gift, ImagePlus, List, Smile, MapPin } from 'lucide-react'
+
+interface Profile {
+  id: string
+  full_name: string
+  username: string
+  avatar_url: string
+  bio: string
+}
 
 type ActionIconType = typeof Gift | typeof ImagePlus | typeof List | typeof Smile | typeof MapPin
 
@@ -39,13 +48,53 @@ export default function NewTweetDialog({
   const [content, setContent] = useState('')
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { user } = useUser()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const { user, session } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    console.log('User data:', user)
-  }, [user])
+    const fetchProfile = async () => {
+      if (!session?.user?.id) return
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+
+        if (error) throw error
+        if (data) setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+      }
+    }
+
+    fetchProfile()
+
+    // Subscribe to profile changes
+    const channel = supabase
+      .channel('profile_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${session?.user?.id}`,
+        },
+        (payload) => {
+          setProfile(payload.new as Profile)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [session?.user?.id, supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,12 +121,6 @@ export default function NewTweetDialog({
     }
   }
 
-  const getInitials = (name?: string, email?: string): string => {
-    if (name) return name.charAt(0).toUpperCase()
-    if (email) return email.charAt(0).toUpperCase()
-    return '?'
-  }
-
   const characterCount = content.length
   const isOverLimit = characterCount > maxLength
 
@@ -88,13 +131,14 @@ export default function NewTweetDialog({
         <DialogTitle className="sr-only">New Tweet</DialogTitle>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div className="flex items-start gap-4">
-            <Avatar className="h-12 w-12 shrink-0">
-              <AvatarImage
-                src={user?.user_metadata?.avatar_url}
-                alt={user?.user_metadata?.full_name || 'Profile picture'}
+            <Avatar className="h-12 w-12 shrink-0 border-2 border-transparent hover:border-[#59F6E8] transition-all">
+              <AvatarImage 
+                src={profile?.avatar_url} 
+                className="object-cover"
+                alt={profile?.full_name || 'Profile picture'} 
               />
-              <AvatarFallback className="bg-[#59F6E8] text-[#16141D]">
-                {getInitials(user?.user_metadata?.full_name, user?.email)}
+              <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+                {profile?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-2">

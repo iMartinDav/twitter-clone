@@ -70,13 +70,13 @@ export function ImageUpload({ currentImageUrl, onImageSelect, type, initials }: 
         <Avatar className="w-32 h-32 border-4 border-[#16141D] relative -mt-16 cursor-pointer shadow-xl transition-transform duration-200 group-hover:scale-105">
           <AvatarImage src={previewUrl} className="object-cover" />
           <AvatarFallback className="text-2xl bg-[#352f4d] text-white">{initials}</AvatarFallback>
-          <button
+          <Button
             onClick={() => fileInputRef.current?.click()}
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 rounded-full transition-all duration-200"
             aria-label="Change avatar"
           >
             <Camera className="w-8 h-8 text-white drop-shadow-lg" />
-          </button>
+          </Button>
         </Avatar>
       </div>
       <input
