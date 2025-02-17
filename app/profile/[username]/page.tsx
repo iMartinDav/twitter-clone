@@ -1,147 +1,145 @@
-// app/profile/[username]/page.tsx
-"use client"
+'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, Link as LinkIcon, MapPin, Share2, ArrowLeft } from 'lucide-react';
-import { format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
-import { EditProfileDialog } from '@/components/edit-profile-dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { Database } from '@/types/supabase';
-import ProfileTweetList from '@/components/tweet-list';
-import { Tweet } from '@/types/tweet';
+import React, { use } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Calendar, Link as LinkIcon, MapPin, ArrowLeft } from 'lucide-react'
+import { format } from 'date-fns'
+import { useToast } from '@/components/ui/use-toast'
+import { EditProfileDialog } from '@/components/edit-profile-dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { motion, AnimatePresence } from 'framer-motion'
+import type { Database } from '@/types/supabase'
+import ProfileTweetList from '@/components/tweet-list'
+import { Tweet } from '@/types/tweet'
 
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
 
 export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-  const [tweets, setTweets] = useState<Tweet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('tweets');
-  const [isEditing, setIsEditing] = useState(false);
-  const [session, setSession] = useState<any>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const headerRef = useRef<HTMLDivElement>(null);
+  const { username } = use(params) // Properly unwrap the params Promise
+  const [profile, setProfile] = useState<ProfileRow | null>(null)
+  const [tweets, setTweets] = useState<Tweet[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('tweets')
+  const [isEditing, setIsEditing] = useState(false)
+  const [session, setSession] = useState<any>(null)
+  const [scrollPosition, setScrollPosition] = useState(0)
+  const headerRef = useRef<HTMLDivElement>(null)
 
-  const supabase = createClientComponentClient<Database>();
-  const router = useRouter();
-  const { toast } = useToast();
+  const supabase = createClientComponentClient<Database>()
+  const router = useRouter()
+  const { toast } = useToast()
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrollPosition(window.scrollY);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const fetchProfileData = useCallback(async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
-
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
-      // Unwrap the params object
-      const { username } = await params;
-
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .single();
-
-      if (profileError) {
-        if (profileError.code === 'PGRST116') {
-          router.push('/404');
-          return;
-        }
-        throw profileError;
-      }
-
-      if (profileData) {
-        setProfile(profileData);
-
-        const { data: tweetData, error: tweetError } = await supabase
-          .from('tweets')
-          .select('*, user:profiles(full_name, username, avatar_url)')
-          .eq('user_id', profileData.user_id)
-          .order('created_at', { ascending: false });
-
-        if (tweetError) {
-          throw tweetError;
-        }
-
-        setTweets((tweetData as Tweet[]) || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load profile',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      setScrollPosition(window.scrollY)
     }
-  }, [params, router, supabase, toast, session?.user?.id]);
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
-    fetchProfileData();
-  }, [fetchProfileData]);
+    const fetchProfileData = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        setSession(session)
+
+        if (!session) {
+          router.push('/login')
+          return
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('username', username)
+          .single()
+
+        if (profileError) {
+          if (profileError.code === 'PGRST116') {
+            router.push('/404')
+            return
+          }
+          throw profileError
+        }
+
+        if (profileData) {
+          setProfile(profileData)
+
+          const { data: tweetData, error: tweetError } = await supabase
+            .from('tweets')
+            .select('*, user:profiles(full_name, username, avatar_url)')
+            .eq('user_id', profileData.user_id)
+            .order('created_at', { ascending: false })
+
+          if (tweetError) {
+            throw tweetError
+          }
+
+          setTweets((tweetData as Tweet[]) || [])
+        }
+      } catch (error) {
+        console.error('Error:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load profile',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfileData()
+  }, [username, router, supabase, toast])
 
   const handleProfileUpdate = async (updatedProfile: Partial<ProfileRow>) => {
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
+      } = await supabase.auth.getSession()
+      if (!session) return
 
       const { data: updatedData, error } = await supabase
         .from('profiles')
         .update(updatedProfile)
         .eq('user_id', session.user.id)
         .select()
-        .single();
+        .single()
 
-      if (error) throw error;
+      if (error) throw error
 
       if (updatedData) {
-        setProfile(updatedData);
+        setProfile(updatedData)
         toast({
           title: 'Success',
           description: 'Profile updated successfully',
-        });
-        router.refresh();
+        })
+        router.refresh()
       }
 
-      setIsEditing(false);
+      setIsEditing(false)
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to update profile',
         variant: 'destructive',
-      });
+      })
     }
-  };
+  }
 
   const formatJoinDate = (dateString?: string) =>
-    dateString ? format(new Date(dateString), 'MMMM') : 'Unknown date';
+    dateString ? format(new Date(dateString), 'MMMM') : 'Unknown date'
 
-  if (isLoading) return <ProfileSkeleton />;
+  if (isLoading) return <ProfileSkeleton />
 
-  const canEdit = profile?.user_id === session?.user?.id;
+  const canEdit = profile?.user_id === session?.user?.id
 
   return (
     <div className="min-h-screen bg-background">
@@ -179,7 +177,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           )}
         </div>
 
-        {/* Profile Section with Enhanced Avatar */}
+        {/* Profile Section */}
         <div className="relative px-4 -mt-16 z-20">
           <motion.div
             className="relative inline-block"
@@ -187,7 +185,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Elegant ring effect */}
+            {/* Ring effect */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600/30 via-purple-500/30 to-fuchsia-500/30 rounded-full blur-sm opacity-75" />
             <div
               className="absolute -inset-0.5 bg-gradient-to-r from-violet-600/30 via-purple-500/30 to-fuchsia-500/30 rounded-full animate-tilt"
@@ -206,7 +204,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
 
           {/* Profile Content with Glass Effect */}
           <div className="mt-4 space-y-4 relative">
-            {/* Stylized Edit Button */}
+            {/* Edit Button */}
             <div className="flex justify-end -mt-12">
               {canEdit && (
                 <motion.div
@@ -238,7 +236,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
               )}
             </div>
 
-            {/* Profile Info with Animations */}
+            {/* Profile Info */}
             <motion.div
               className="space-y-4"
               initial={{ y: 20, opacity: 0 }}
@@ -341,7 +339,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
         onSave={handleProfileUpdate}
       />
     </div>
-  );
+  )
 }
 
 function ProfileSkeleton() {
@@ -374,5 +372,5 @@ function ProfileSkeleton() {
         </div>
       </div>
     </div>
-  );
+  )
 }

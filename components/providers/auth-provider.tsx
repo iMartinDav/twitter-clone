@@ -1,7 +1,13 @@
-'use client'
+'use client' // Important: Mark as Client Component
 
-import { AuthProvider } from '@/contexts/auth-context'
+import { AuthProvider } from '@/contexts/auth-context' // Adjust path
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>
+export const Providers = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <AuthProvider>
+      {' '}
+      {/* AuthProvider is now correctly used within a Client Component */}
+      {children}
+    </AuthProvider>
+  )
 }

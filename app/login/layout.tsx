@@ -1,12 +1,11 @@
-import '../globals.css'
+import '../globals.css' // Consider if you need globals.css here or only in root layout
 import { Inter } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
-import { Providers } from '@/components/providers/auth-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Login - Your Social App',
+  title: 'X Bio - It’s what’s happening / Login X Bio',
   description: 'Login to access your social app and connect with your community.',
   robots: {
     index: false,
@@ -22,11 +21,5 @@ export const viewport: Viewport = {
 }
 
 export default function LoginRootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full bg-[#16141D]`}>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
-  )
+  return <div className={`${inter.className} h-full bg-[#16141D] text-white`}>{children}</div>
 }

@@ -1,4 +1,5 @@
 'use client'
+
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useMemo, useCallback, useState } from 'react'
@@ -27,16 +28,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
+  const [authError, setAuthError] = useState<Error | null>(null) // State to track auth errors
 
   useEffect(() => {
     const client = createClientComponentClient<Database>()
     setSupabase(client)
 
     const initializeAuth = async () => {
+      setLoading(true) // Start loading before auth initialization
+      setAuthError(null) // Clear any previous auth errors
       try {
         const {
           data: { session: initialSession },
+          error,
         } = await client.auth.getSession()
+
+        if (error) {
+          console.error('Initial session fetch error:', error)
+          setAuthError(error) // Set auth error state
+          throw error // Re-throw to be caught in finally block and setLoading(false)
+        }
+
         setSession(initialSession)
         setUser(initialSession?.user ?? null)
 
@@ -48,11 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.refresh()
         })
 
-        return () => subscription?.unsubscribe()
+        return () => subscription?.unsubscribe() // Optional unsubscribe
       } catch (error) {
         console.error('Auth initialization error:', error)
+        // Optionally handle error display to user, or redirect to error page
       } finally {
-        setLoading(false)
+        setLoading(false) // Ensure loading is set to false even after errors
       }
     }
 
@@ -61,8 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return
-    await supabase.auth.signOut()
-    router.push('/login')
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // Handle sign-out error, maybe show a toast
+    }
   }, [supabase, router])
 
   const contextValue = useMemo(
@@ -72,8 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signOut,
       supabaseClient: supabase,
+      authError, // Expose auth error in context
     }),
-    [user, session, loading, signOut, supabase],
+    [user, session, loading, signOut, supabase, authError],
   )
 
   return (
@@ -82,6 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         children
       ) : (
         <div className="flex justify-center p-4">Loading authentication...</div>
+      )}
+      {authError && ( // Optionally display an error message if auth initialization failed
+        <div className="text-red-500 text-center p-2">
+          Authentication failed to initialize. Please try again later.
+        </div>
       )}
     </AuthContext.Provider>
   )

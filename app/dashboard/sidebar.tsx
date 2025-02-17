@@ -1,11 +1,11 @@
-// app/dashboard/sidebar.tsx
 'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClientComponentClient, User } from '@supabase/auth-helpers-nextjs';
-import { useAuth } from '@/contexts/auth-context';
-import Link from 'next/link';
+import React from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useAuth } from '@/contexts/auth-context'
+import Link from 'next/link'
 import {
   Home,
   Search,
@@ -16,50 +16,46 @@ import {
   Settings,
   Plus,
   LogOut,
-} from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import NewTweetDialog from './new-tweet-dialog';
-import { Button } from '@/components/ui/button';
+} from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import NewTweetDialog from './new-tweet-dialog'
+import { Button } from '@/components/ui/button'
 
 interface Profile {
-  id: string;
-  full_name: string;
-  username: string;
-  avatar_url: string;
-  bio: string;
+  id: string
+  full_name: string
+  username: string
+  avatar_url: string
+  bio: string
 }
 
-interface SidebarProps {
-  user: User;
-}
+export default function Sidebar() {
+  const { session, signOut, loading } = useAuth()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
-export default function Sidebar({ user }: SidebarProps) {
-  const { session } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const router = useRouter();
-  const supabase = createClientComponentClient();
+  const fetchProfile = useCallback(async () => {
+    if (!session?.user?.id) return
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (error) throw error
+      if (data) setProfile(data)
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    }
+  }, [session?.user?.id, supabase])
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!session?.user?.id) return;
+    fetchProfile()
 
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (error) throw error;
-        if (data) setProfile(data);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
-    };
-
-    fetchProfile();
-
-    // Subscribe to profile changes
     const channel = supabase
       .channel('profile_changes')
       .on(
@@ -71,22 +67,58 @@ export default function Sidebar({ user }: SidebarProps) {
           filter: `user_id=eq.${session?.user?.id}`,
         },
         (payload) => {
-          setProfile(payload.new as Profile);
+          setProfile(payload.new as Profile)
         },
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session?.user?.id, supabase]);
+      channel.unsubscribe()
+    }
+  }, [session?.user?.id, supabase, fetchProfile])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
+    if (isLoggingOut) return
 
-  // Define navItems inside the component
+    try {
+      setIsLoggingOut(true)
+
+      // Clear local state
+      setProfile(null)
+
+      // Sign out from Supabase
+      await supabase.auth.signOut()
+
+      // Call context signOut
+      await signOut()
+
+      // Clear any cached data
+      router.refresh()
+
+      // Force navigation to login page
+      router.push('/login')
+
+      // Ensure the navigation completes
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 100)
+    } catch (error) {
+      console.error('Error signing out:', error)
+      // Force navigation on error
+      window.location.href = '/login'
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="h-screen flex flex-col px-2 py-4 items-center justify-center">
+        <div className="text-white/50">Loading...</div>
+      </div>
+    )
+  }
+
   const navItems = [
     { icon: Home, label: 'Home', href: '/dashboard' },
     { icon: Search, label: 'Search', href: '#' },
@@ -100,11 +132,10 @@ export default function Sidebar({ user }: SidebarProps) {
       href: profile ? `/profile/${profile.username}` : '/profile',
     },
     { icon: Settings, label: 'Settings', href: '#' },
-  ];
+  ]
 
   return (
-    <aside className="h-screen flex flex-col px-2 py-4">
-      {/* Navigation */}
+    <div className="h-screen flex flex-col px-2 py-4">
       <nav className="flex-1 mt-4">
         {navItems.map((item) => (
           <Link
@@ -120,7 +151,6 @@ export default function Sidebar({ user }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Post Button */}
       <div className="px-4 my-4">
         <NewTweetDialog>
           <Button className="w-full bg-[#6B46CC] hover:bg-[#5A37A7] rounded-full py-6 text-base font-bold transition-all hover:shadow-lg hover:shadow-purple-500/20">
@@ -130,39 +160,39 @@ export default function Sidebar({ user }: SidebarProps) {
         </NewTweetDialog>
       </div>
 
-      {/* Profile Section */}
       {profile && (
         <div className="mt-auto">
-          <Button
-            onClick={() => router.push(`/profile/${profile.username}`)}
-            className="w-full p-4 flex items-center gap-3 rounded-full hover:bg-white/10 transition-all group relative"
-          >
-            <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
-              <AvatarImage src={profile.avatar_url} className="object-cover" />
-              <AvatarFallback className="bg-[#352f4d] text-white text-lg">
-                {profile.full_name[0]}
-              </AvatarFallback>
-            </Avatar>
+          <div className="w-full p-4 flex items-center gap-3 rounded-full hover:bg-white/10 transition-all group relative">
+            <Link href={`/profile/${profile.username}`}>
+              <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-[#59F6E8] transition-all">
+                <AvatarImage src={profile.avatar_url} className="object-cover" />
+                <AvatarFallback className="bg-[#352f4d] text-white text-lg">
+                  {profile.full_name[0]}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <div className="hidden lg:block flex-1 text-left">
-              <div className="font-bold text-white truncate max-w-[150px]">{profile.full_name}</div>
-              <div className="text-gray-500 text-sm truncate max-w-[150px]">
-                @{profile.username}
-              </div>
+              <Link href={`/profile/${profile.username}`} className="block">
+                <div className="font-bold text-white truncate max-w-[150px]">
+                  {profile.full_name}
+                </div>
+                <div className="text-gray-500 text-sm truncate max-w-[150px]">
+                  @{profile.username}
+                </div>
+              </Link>
             </div>
             <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSignOut();
-              }}
+              onClick={handleSignOut}
               variant="ghost"
               size="icon"
-              className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 rounded-full transition-all"
+              disabled={isLoggingOut}
+              className="ml-auto opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 rounded-full transition-all disabled:opacity-50"
             >
               <LogOut className="h-5 w-5" />
             </Button>
-          </Button>
+          </div>
         </div>
       )}
-    </aside>
-  );
+    </div>
+  )
 }

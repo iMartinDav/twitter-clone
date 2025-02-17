@@ -18,7 +18,12 @@ const loginSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
-const LoginForm = () => {
+interface LoginFormProps {
+  onLoginSuccess: () => void // Define prop for redirect on success
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
+  // ✅ Accept onLoginSuccess prop
   const [formState, setFormState] = useState({
     isLoading: false,
     showSignUp: false,
@@ -129,7 +134,7 @@ const LoginForm = () => {
             title: '🎉 Welcome Back!',
             description: "You've successfully signed in. Redirecting...",
           })
-          router.push('/dashboard') // Redirect to the dashboard
+          onLoginSuccess() // ✅ Call onLoginSuccess to trigger redirect in LoginPage
         } else {
           setFormState((prev) => ({ ...prev, showSignUp: false }))
           toast({
@@ -149,7 +154,7 @@ const LoginForm = () => {
         setFormState((prev) => ({ ...prev, isLoading: false }))
       }
     },
-    [formState, router, supabase.auth, toast],
+    [formState, onLoginSuccess, router, supabase.auth, toast], // ✅ Add onLoginSuccess to dependencies
   )
 
   const toggleSignUp = useCallback(() => {

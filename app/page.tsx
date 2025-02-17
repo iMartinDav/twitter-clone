@@ -1,4 +1,3 @@
-// app/page.tsx
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -9,5 +8,5 @@ export default async function Home() {
     data: { session },
   } = await supabase.auth.getSession()
 
-  redirect(session ? '/dashboard' : '/login')
+  redirect(session ? '/dashboard' : '/login') // ✅ Redirect to '/dashboard' for logged-in users
 }

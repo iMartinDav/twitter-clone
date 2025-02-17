@@ -1,24 +1,32 @@
 // app/login/page.tsx
-import { Suspense } from 'react'
+'use client'
+
+import { useEffect } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 import LoginForm from '@/components/LoginForm'
-import LoadingState from './LoadingState' // Create this LoadingState component
+import LoadingState from './LoadingState'
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoadingState />}>
-      <LoginWrapper />
-    </Suspense>
-  )
-}
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
-async function LoginWrapper() {
-  return <LoginPageContent />
-}
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session) {
+        router.replace('/')
+      }
+    }
 
-function LoginPageContent() {
+    checkSession()
+  }, [supabase, router])
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black">
-      <LoginForm />
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <LoginForm onLoginSuccess={() => router.replace('/dashboard')} />
     </div>
   )
 }

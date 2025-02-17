@@ -27,7 +27,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TweetActionButton } from '@/components/tweet/tweet-action-button'
 import { useTweetInteractions } from '@/hooks/use-tweet-interactions'
-import { useProfile } from '@/hooks/use-profile'
 import type { Database } from '@/types/supabase'
 import type { Tweet } from '@/types/tweet'
 
@@ -49,7 +48,9 @@ export default function Dashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tweets, setTweets] = useState<Tweet[]>([])
   const [isMounted, setIsMounted] = useState(false)
-  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(null)
+  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(
+    null,
+  )
   const [isHovered, setIsHovered] = useState<string | null>(null)
 
   const maxLength = 280
