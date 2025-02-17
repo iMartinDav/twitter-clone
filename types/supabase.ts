@@ -150,3 +150,5 @@ export type RealtimePayload<T> =
   | RealtimeInsertPayload<T>
   | RealtimeUpdatePayload<T>
   | RealtimeDeletePayload<T>
+
+export type ProfileRow = Database['public']['Tables']['profiles']['Row']
