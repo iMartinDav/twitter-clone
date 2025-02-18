@@ -1,8 +1,7 @@
-// components/Tweet/ProfileTweetList.tsx
 'use client'
 
 import { Tweet } from '@/types/tweet'
-import { TweetCard } from '@/app/dashboard/tweet-card'
+import { TweetCard } from '@/components/profile/tweet-card'
 
 interface ProfileTweetListProps {
   initialTweets: Tweet[]
@@ -10,8 +9,6 @@ interface ProfileTweetListProps {
 }
 
 export default function ProfileTweetList({ initialTweets, userId }: ProfileTweetListProps) {
-  console.log('initialTweets in Profile TweetList:', initialTweets)
-
   return (
     <div className="divide-y divide-[#2F3336]">
       {initialTweets.map((tweet) => (

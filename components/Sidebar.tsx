@@ -18,7 +18,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import NewTweetDialog from './new-tweet-dialog'
+import NewTweetDialog from '../app/dashboard/new-tweet-dialog'
 import { Button } from '@/components/ui/button'
 
 interface Profile {

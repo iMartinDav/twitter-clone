@@ -12,7 +12,6 @@ export async function updateProfile(
     .from('profiles')
     .update({
       ...profileData,
-      // Remove updated_at as it's handled by the database trigger
       updated_at: undefined,
     })
     .eq('user_id', userId)
