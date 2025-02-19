@@ -1,7 +1,15 @@
-import type { Queue } from 'https://deno.land/x/queue@v1.0.0/mod.ts'
+import type { Queue } from '@cloudflare/workers-types'
 
 export interface Env {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   TWEET_QUEUE: Queue
+  JWT_SECRET: string
+}
+
+export interface QueueMessage {
+  tweetId: string
+  userId: string
+  content: string
+  timestamp: number
 }

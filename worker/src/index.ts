@@ -1,115 +1,95 @@
-import { createClient } from '@supabase/supabase-js'
-import { Queue, ExecutionContext } from '@cloudflare/workers-types'
+import { Queue } from '@cloudflare/workers-types';
+import { createClient } from '@supabase/supabase-js';
+import { validateToken, sanitizeTweet, validateTweetContent } from './utils';
 
+/**
+ * Environment variables for the Worker
+ */
 interface Env {
-  SUPABASE_URL: string
-  SUPABASE_ANON_KEY: string
-  TWEET_QUEUE: Queue
-  JWT_SECRET: string // Consider setting this for JWT verification in production
+  SUPABASE_URL: string; // Supabase project URL
+  SUPABASE_ANON_KEY: string; // Supabase anon/public key
+  TWEET_QUEUE: Queue; // Cloudflare Queue for async processing
+  JWT_SECRET: string; // Secret for JWT verification
 }
 
+/**
+ * Tweet data structure
+ */
+interface Tweet {
+  content: string; // Tweet content
+  user_id: string; // User ID of the tweet author
+}
+
+/**
+ * Main Worker entry point
+ */
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 })
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Handle tweet creation
+    if (request.method === 'POST' && url.pathname === '/tweet') {
+      return handleTweetCreation(request, env);
     }
-    if (request.url.endsWith('/api/tweet')) {
-      return handleTweetCreation(request, env, ctx)
-    }
-    return new Response('Not Found', { status: 404 })
+
+    // Return 404 for unknown routes
+    return new Response('Not Found', { status: 404 });
   },
-}
+};
 
-async function handleTweetCreation(
-  request: Request,
-  env: Env,
-  ctx: ExecutionContext,
-): Promise<Response> {
+/**
+ * Handles the creation of a new tweet
+ */
+async function handleTweetCreation(request: Request, env: Env): Promise<Response> {
   try {
-    // 1. Authentication (Simplified JWT verification - IMPROVE IN PRODUCTION)
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response('Unauthorized', { status: 401 })
-    }
-    const token = authHeader.substring(7)
-
-    const jwtPayload = decodeJWTPayload(token)
-    const userId = jwtPayload?.sub
-
-    if (!userId) {
-      return new Response('Unauthorized - Invalid JWT', { status: 401 })
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response('Unauthorized', { status: 401 });
     }
 
-    // 2. Input Validation & Sanitization
-    const { content } = (await request.json()) as { content: string }
-    if (!content || content.trim() === '') {
-      return new Response('Invalid input: Content is required', { status: 400 })
-    }
-    if (content.length > 280) {
-      return new Response('Invalid input: Content too long (max 280 chars)', { status: 400 })
+    const token = authHeader.split(' ')[1];
+    const user = await validateToken(token, env.JWT_SECRET);
+    if (!user) {
+      return new Response('Invalid token', { status: 401 });
     }
 
-    const sanitizedContent = sanitizeInput(content)
+    const { content } = await request.json();
+    if (!validateTweetContent(content)) {
+      return new Response('Invalid content', { status: 400 });
+    }
 
-    // 3. Supabase Client Setup
-    const supabaseClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
+    const sanitizedContent = sanitizeTweet(content);
 
-    // 4. Insert Tweet into Supabase
-    const { data: tweetData, error: tweetError } = await supabaseClient
+    // 3. Save the tweet to Supabase
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    const { data, error } = await supabase
       .from('tweets')
-      .insert({ content: sanitizedContent, user_id: userId })
+      .insert({ content: sanitizedContent, user_id: user.sub })
       .select()
-      .single()
+      .single();
 
-    if (tweetError) {
-      console.error('Supabase Tweet Insert Error:', tweetError)
-      return new Response('Failed to create tweet in database', { status: 500 })
+    if (error) {
+      console.error('Supabase error:', error);
+      return new Response('Database error: Failed to create tweet', { status: 500 });
     }
 
-    // 5. Send message to Cloudflare Queue
-    await env.TWEET_QUEUE.send({ tweetId: tweetData.id, userId })
-    console.log(`Message sent to queue for tweet ID: ${tweetData.id}`)
+    // 4. Enqueue the tweet for async processing
+    await env.TWEET_QUEUE.send({
+      tweetId: data.id,
+      userId: user.sub,
+      content: sanitizedContent,
+      timestamp: Date.now(),
+    });
 
-    return new Response(
-      JSON.stringify({ message: 'Tweet created successfully', tweet: tweetData }),
-      {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
-  } catch (error: any) {
-    console.error('Tweet Creation Error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal Server Error', details: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
-  }
-}
+    console.log(`Tweet ${data.id} enqueued for processing`);
 
-function sanitizeInput(text: string): string {
-  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function decodeJWTPayload(token: string): any {
-  try {
-    const base64Url = token.split('.')[1]
-    if (!base64Url) return null
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-        })
-        .join(''),
-    )
-
-    return JSON.parse(jsonPayload)
+    // 5. Return success response
+    return new Response(JSON.stringify(data), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('JWT Decode Error:', error)
-    return null
+    console.error('Error:', error);
+    return new Response('Server Error', { status: 500 });
   }
 }

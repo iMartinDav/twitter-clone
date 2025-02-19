@@ -4,6 +4,7 @@ import type { Database } from '@/types/supabase'
 import type { Tweet } from '@/types/tweet'
 
 const supabase = createClientComponentClient<Database>()
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL
 
 /**
  * Fetches tweets for the dashboard feed (e.g., 'For You' or 'Following' - currently all tweets).
@@ -53,13 +54,24 @@ export const fetchProfileTweets = async (userId: string): Promise<Tweet[]> => {
 
 export const insertTweet = async (content: string, userId: string): Promise<void> => {
     try {
-        const { error } = await supabase
-            .from('tweets')
-            .insert([{ content: content.trim(), user_id: userId }])
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) throw new Error('No access token')
 
-        if (error) {
-            throw error
+        const response = await fetch(`${WORKER_URL}/tweet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ content })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        return data;
     } catch (error) {
         console.error('Error inserting tweet:', error)
         throw error

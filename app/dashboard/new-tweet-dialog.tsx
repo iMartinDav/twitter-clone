@@ -14,7 +14,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Gift, ImagePlus, List, Smile, MapPin, X, Loader2 } from 'lucide-react'
+import { Gift, ImagePlus, List, Smile, MapPin, Loader2 } from 'lucide-react'
 
 interface Profile {
   id: string
