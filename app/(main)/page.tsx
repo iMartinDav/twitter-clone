@@ -58,17 +58,37 @@ export default function HomePage() {
     }, [session?.user?.id, supabase])
 
     const handleTweetPosted = useCallback(async () => {
-        const updatedTweets = await fetchDashboardTweets()
-        setTweets(updatedTweets)
-        fetchTweetInteractionsInBulk(updatedTweets.map((tweet) => tweet.id))
-    }, [fetchTweetInteractionsInBulk])
+        try {
+            // Refresh the tweets list immediately after posting
+            const updatedTweets = await fetchDashboardTweets()
+            setTweets(updatedTweets)
+            
+            // Update interactions for all tweets
+            if (updatedTweets.length > 0) {
+                await fetchTweetInteractionsInBulk(updatedTweets.map(tweet => tweet.id))
+            }
+            
+            // Scroll to top to show the new tweet
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+        } catch (error) {
+            console.error('Error updating tweets:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to update tweets',
+                variant: 'destructive'
+            })
+        }
+    }, [fetchTweetInteractionsInBulk, toast])
 
     const handleRealtimeUpdate = useCallback(
         (payload: RealtimePostgresChangesPayload<Database['public']['Tables']['tweets']['Row']>) => {
             if (payload.eventType === 'INSERT') {
-                fetchDashboardTweets().then((updatedTweets) => {
+                // Immediately add the new tweet to the list
+                fetchDashboardTweets(supabase).then((updatedTweets) => {
                     setTweets(updatedTweets)
-                    fetchTweetInteractionsInBulk(updatedTweets.map((tweet) => tweet.id))
+                    if (updatedTweets.length > 0) {
+                        fetchTweetInteractionsInBulk(updatedTweets.map((tweet) => tweet.id))
+                    }
                 })
             }
             if (payload.eventType === 'DELETE') {

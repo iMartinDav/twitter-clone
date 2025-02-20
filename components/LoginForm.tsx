@@ -94,12 +94,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       try {
         setFormState((prev) => ({ ...prev, isLoading: true, error: null }))
-
+        
         // Validate form inputs
         loginSchema.parse({ email, password })
 
-        console.log('Submitting form with:', { email, password }) // Debugging
-
+        // Remove console.log of sensitive data
         const authAction = showSignUp
           ? supabase.auth.signUp({
               email,
@@ -108,10 +107,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             })
           : supabase.auth.signInWithPassword({ email, password })
 
-        const { data, error } = await authAction
+        const { error } = await authAction
         if (error) {
-          console.error('Supabase error:', error) // Debugging
-
+          // Only log error message, not the full error object
+          console.error('Authentication error:', error.message)
+          
           // Handle "User already registered" error
           if (error.message.includes('User already registered')) {
             setFormState((prev) => ({
@@ -156,6 +156,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     },
     [formState, onLoginSuccess, router, supabase.auth, toast], // ✅ Add onLoginSuccess to dependencies
   )
+
+  const handleSignIn = async (formData: FormData) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: String(formData.get('email')),
+      password: String(formData.get('password')),
+    })
+
+    if (data.session) {
+      router.refresh() // Force a server rerender
+      onLoginSuccess?.()
+    }
+  }
 
   const toggleSignUp = useCallback(() => {
     setFormState((prev) => ({

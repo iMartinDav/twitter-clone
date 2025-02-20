@@ -52,29 +52,37 @@ export const fetchProfileTweets = async (userId: string): Promise<Tweet[]> => {
     }
 }
 
-export const insertTweet = async (content: string, userId: string): Promise<void> => {
+export const insertTweet = async (content: string, userId: string): Promise<Tweet> => {
     try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) throw new Error('No access token')
-
-        const response = await fetch(`${WORKER_URL}/tweet`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ content })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (!content || !userId) {
+            throw new Error('Missing required fields for tweet')
         }
 
-        const data = await response.json();
-        return data;
+        const { data, error } = await supabase
+            .from('tweets')
+            .insert([{
+                content: content.trim(),
+                user_id: userId
+            }])
+            .select(`
+                *,
+                user:profiles(full_name, username, avatar_url)
+            `)
+            .single()
+
+        if (error) {
+            console.error('Tweet creation error:', error)
+            throw new Error(`Failed to create tweet: ${error.message}`)
+        }
+
+        if (!data) {
+            throw new Error('No data returned from tweet creation')
+        }
+
+        return data as Tweet
     } catch (error) {
-        console.error('Error inserting tweet:', error)
-        throw error
+        console.error('Error creating tweet:', error)
+        throw error instanceof Error ? error : new Error('Failed to create tweet')
     }
 }
 

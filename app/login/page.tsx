@@ -5,7 +5,6 @@ import { useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import LoginForm from '@/components/LoginForm'
-import LoadingState from './LoadingState'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -24,14 +23,14 @@ export default function LoginPage() {
     checkSession()
   }, [supabase, router])
 
-  const handleSignIn = async () => {
-    // ...existing sign in logic...
-    router.push('/') // Change this to redirect to root instead of /dashboard
+  const handleLoginSuccess = () => {
+    // Force a hard reload to ensure layout re-renders properly
+    window.location.href = '/'
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <LoginForm onLoginSuccess={() => router.replace('/')} />
+      <LoginForm onLoginSuccess={handleLoginSuccess} />
     </div>
   )
 }

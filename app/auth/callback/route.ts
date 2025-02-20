@@ -8,7 +8,6 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = createRouteHandlerClient({ cookies })
-
     try {
       const {
         data: { user },
@@ -17,31 +16,26 @@ export async function GET(request: Request) {
 
       if (authError) {
         console.error('Auth code exchange error:', authError)
-        // Redirect to login page with error message or error page
         return NextResponse.redirect(new URL('/login?error=auth_failed', requestUrl.origin))
       }
 
       if (user) {
-        // Check if profile exists
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id') // Select only ID to optimize query
+          .select('id')
           .eq('user_id', user.id)
           .single()
 
         if (profileError && profileError.message !== 'No rows found') {
-          // Handle actual profile query errors
           console.error('Error checking profile:', profileError)
           return NextResponse.redirect(
-            new URL('/login?error=profile_check_failed', requestUrl.origin),
+            new URL('/login?error=profile_check_failed', requestUrl.origin)
           )
         }
 
-        // If no profile exists, create one using OAuth data
         if (!profile) {
           const providerData = user.user_metadata
-          // Simplified username generation - consider making it more robust and unique on backend if needed.
-          const defaultUsername = `user_${Math.random().toString(36).slice(2, 11)}`
+          const defaultUsername = `user_${Date.now().toString(36)}`
           const username =
             providerData.user_name ||
             providerData.username ||
@@ -63,7 +57,7 @@ export async function GET(request: Request) {
           if (insertError) {
             console.error('Error creating profile:', insertError)
             return NextResponse.redirect(
-              new URL('/login?error=profile_creation_failed', requestUrl.origin),
+              new URL('/login?error=profile_creation_failed', requestUrl.origin)
             )
           }
         }
@@ -74,6 +68,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // Redirect to the home page after successful auth or if no code is present (consider different handling for no code?)
   return NextResponse.redirect(new URL('/', requestUrl.origin))
 }

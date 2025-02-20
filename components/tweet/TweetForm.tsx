@@ -12,6 +12,8 @@ import { useToast } from '@/components/ui/use-toast'
 import { TweetActionButton } from './tweet-action-button'
 import { cn } from '@/lib/utils'
 import type { Database } from '@/types/supabase'
+import { insertTweet } from '@/services/tweet-service'
+import { createReply } from '@/services/tweet-interactions'
 
 const actions = [
   { icon: <ImagePlus className="h-[18px] w-[18px]" />, label: 'Media' },
@@ -53,26 +55,27 @@ const TweetForm: React.FC<TweetFormProps> = ({
 
     setIsSubmitting(true)
     try {
-      const tweetData = {
-        content,
-        user_id: user.id,
-        ...(replyTo && { reply_to: replyTo }),
-      }
-
-      const { error } = await supabase.from('tweets').insert([tweetData])
-      if (error) throw error
-
-      setContent('')
-      toast({ title: 'Success', description: 'Tweet posted!' })
-      onTweetPosted()
+        // Modified to handle both new tweets and replies
+        if (replyTo) {
+            await createReply(replyTo, content.trim(), user.id)
+        } else {
+            await insertTweet(content.trim(), user.id)
+        }
+        
+        setContent('')
+        toast({ 
+            title: 'Success', 
+            description: replyTo ? 'Reply posted!' : 'Tweet posted!' 
+        })
+        onTweetPosted()
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to post tweet',
-        variant: 'destructive',
-      })
+        toast({
+            title: 'Error',
+            description: error instanceof Error ? error.message : 'Failed to post tweet',
+            variant: 'destructive',
+        })
     } finally {
-      setIsSubmitting(false)
+        setIsSubmitting(false)
     }
   }
 

@@ -53,50 +53,26 @@ export async function createReply(tweetId: string, content: string, userId: stri
       throw new Error('Missing required fields for reply')
     }
 
-    // First verify if the tweet exists
-    const { data: parentTweet, error: parentError } = await supabase
+    // Create the tweet first
+    const { data: newTweet, error: tweetError } = await supabase
       .from('tweets')
-      .select('id')
-      .eq('id', tweetId)
-      .single()
-
-    if (parentError || !parentTweet) {
-      throw new Error('Parent tweet not found')
-    }
-
-    // Create the reply directly in the replies table
-    const { data: reply, error: replyError } = await supabase
-      .from('replies')
       .insert({
-        tweet_id: tweetId,
+        content: content.trim(),
         user_id: userId,
-        content: content.trim()
+        reply_to: tweetId
       })
       .select(`
         *,
-        tweet:tweets!replies_tweet_id_fkey(
-          id,
-          content,
-          created_at
-        ),
-        profile:profiles!replies_user_id_fkey(
-          full_name,
-          username,
-          avatar_url
-        )
+        user:profiles(full_name, username, avatar_url)
       `)
       .single()
 
-    if (replyError) {
-      console.error('Reply error details:', replyError)
-      throw new Error(`Failed to create reply: ${replyError.message}`)
+    if (tweetError) {
+      console.error('Tweet creation error:', tweetError)
+      throw new Error(`Failed to create reply tweet: ${tweetError.message}`)
     }
 
-    if (!reply) {
-      throw new Error('No data returned after creating reply')
-    }
-
-    return reply
+    return newTweet
   } catch (error) {
     console.error('Error creating reply:', error)
     throw error instanceof Error ? error : new Error('Failed to create reply')
