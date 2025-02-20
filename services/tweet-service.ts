@@ -77,3 +77,59 @@ export const insertTweet = async (content: string, userId: string): Promise<void
         throw error
     }
 }
+
+export const insertReply = async (content: string, replyToTweetId: string, userId: string): Promise<void> => {
+    try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) throw new Error('No access token')
+
+        const response = await fetch(`${WORKER_URL}/tweet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ 
+                content,
+                reply_to: replyToTweetId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error inserting reply:', error)
+        throw error
+    }
+}
+
+export const fetchTweetWithReplies = async (tweetId: string): Promise<Tweet & { replies?: Tweet[] }> => {
+    try {
+        const [{ data: tweet }, { data: replies }] = await Promise.all([
+            supabase
+                .from('tweets')
+                .select('*, user:profiles(full_name, username, avatar_url)')
+                .eq('id', tweetId)
+                .single(),
+            supabase
+                .from('tweets')
+                .select('*, user:profiles(full_name, username, avatar_url)')
+                .eq('reply_to', tweetId)
+                .order('created_at', { ascending: true })
+        ]);
+
+        if (!tweet) throw new Error('Tweet not found');
+
+        return {
+            ...tweet,
+            replies: replies || []
+        };
+    } catch (error) {
+        console.error('Error fetching tweet with replies:', error)
+        throw error
+    }
+}

@@ -47,11 +47,90 @@ export async function toggleRetweet(tweetId: string, userId: string) {
     .insert({ tweet_id: tweetId, user_id: userId })
 }
 
+export async function createReply(tweetId: string, content: string, userId: string) {
+  try {
+    if (!content || !tweetId || !userId) {
+      throw new Error('Missing required fields for reply')
+    }
+
+    // First verify if the tweet exists
+    const { data: parentTweet, error: parentError } = await supabase
+      .from('tweets')
+      .select('id')
+      .eq('id', tweetId)
+      .single()
+
+    if (parentError || !parentTweet) {
+      throw new Error('Parent tweet not found')
+    }
+
+    // Create the reply directly in the replies table
+    const { data: reply, error: replyError } = await supabase
+      .from('replies')
+      .insert({
+        tweet_id: tweetId,
+        user_id: userId,
+        content: content.trim()
+      })
+      .select(`
+        *,
+        tweet:tweets!replies_tweet_id_fkey(
+          id,
+          content,
+          created_at
+        ),
+        profile:profiles!replies_user_id_fkey(
+          full_name,
+          username,
+          avatar_url
+        )
+      `)
+      .single()
+
+    if (replyError) {
+      console.error('Reply error details:', replyError)
+      throw new Error(`Failed to create reply: ${replyError.message}`)
+    }
+
+    if (!reply) {
+      throw new Error('No data returned after creating reply')
+    }
+
+    return reply
+  } catch (error) {
+    console.error('Error creating reply:', error)
+    throw error instanceof Error ? error : new Error('Failed to create reply')
+  }
+}
+
+export async function fetchReplies(tweetId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('replies')
+      .select(`
+        *,
+        profile:profiles!replies_user_id_fkey(
+          full_name,
+          username,
+          avatar_url
+        )
+      `)
+      .eq('tweet_id', tweetId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching replies:', error)
+    throw error
+  }
+}
+
 export async function fetchTweetInteractions(tweetId: string): Promise<TweetInteraction> {
   const [{ data: likes }, { data: retweets }, { data: replies }] = await Promise.all([
     supabase.from('likes').select('user_id').eq('tweet_id', tweetId),
     supabase.from('retweets').select('user_id').eq('tweet_id', tweetId),
-    supabase.from('tweets').select('id').eq('reply_to', tweetId),
+    supabase.from('replies').select('id').eq('tweet_id', tweetId),
   ])
 
   return {

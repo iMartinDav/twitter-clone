@@ -3,16 +3,18 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Database } from './supabase'
 
 export interface Tweet {
-  stats: { replies: number; retweets: number; likes: number }
+  [x: string]: any
   id: string
   content: string
   created_at: string
   user_id: string
-  user: {
-    id: string
+  isReply?: boolean
+  replyCount?: number
+  replies?: Tweet[]
+  profile: {
     full_name: string
     username: string
-    avatar_url?: string
+    avatar_url: string
   }
 }
 

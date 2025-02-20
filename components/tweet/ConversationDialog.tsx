@@ -18,6 +18,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Gift, ImagePlus, List, Smile, MapPin, Loader2, MessageSquare } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { EmojiPicker } from '@/components/common/EmojiPicker'
+import { createReply } from '@/services/tweet-interactions'
 
 interface Profile {
   id: string
@@ -53,7 +55,6 @@ const ACTIONS: ActionIcon[] = [
   { icon: ImagePlus, label: 'Add image' },
   { icon: Gift, label: 'Add gift' },
   { icon: List, label: 'Add list' },
-  { icon: Smile, label: 'Add emoji' },
   { icon: MapPin, label: 'Add location' },
 ]
 
@@ -147,27 +148,27 @@ export const ConversationDialog: React.FC<ConversationDialogProps> = ({
     setOpen(newOpen)
   }
 
+  const handleEmojiSelect = (emoji: string) => {
+    setContent(prev => prev + emoji)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!content.trim() || isSubmitting || !user) return
 
     setIsSubmitting(true)
     try {
-      const { error } = await supabase
-        .from('tweets')
-        .insert([{ 
-          content: content.trim(), 
-          user_id: user.id,
-          reply_to: tweetId 
-        }])
-
-      if (error) throw error
-
-      toast({ title: 'Success', description: 'Reply posted!' })
+      await createReply(tweetId, content.trim(), user.id)
+      toast({ 
+        title: 'Success', 
+        description: 'Reply posted!',
+        variant: 'default'
+      })
       setContent('')
       setOpen(false)
       router.refresh()
     } catch (error) {
+      console.error('Reply error:', error)
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to post reply',
@@ -269,6 +270,7 @@ export const ConversationDialog: React.FC<ConversationDialogProps> = ({
                     <Icon className="h-5 w-5 text-[#6B46CC] transition-colors" />
                   </Button>
                 ))}
+                <EmojiPicker onChange={handleEmojiSelect} />
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-1 w-24 bg-[#2F3336] rounded-full overflow-hidden">

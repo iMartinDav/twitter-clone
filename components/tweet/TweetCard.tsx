@@ -12,12 +12,16 @@ interface TweetCardProps {
   tweet: Tweet
   className?: string
   variant?: 'default' | 'compact'
+  replyCount?: number
+  replies?: Tweet[]
 }
 
-export const TweetCard = React.memo<TweetCardProps>(({ 
+export const TweetCard: React.FC<TweetCardProps> = React.memo<TweetCardProps>(({ 
   tweet, 
   className = '',
-  variant = 'default'
+  variant = 'default',
+  replyCount,
+  replies
 }) => {
   const router = useRouter()
   const { fetchTweetInteractions } = useTweetInteractions()
