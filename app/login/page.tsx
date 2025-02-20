@@ -24,6 +24,11 @@ export default function LoginPage() {
     checkSession()
   }, [supabase, router])
 
+  const handleSignIn = async () => {
+    // ...existing sign in logic...
+    router.push('/') // Change this to redirect to root instead of /dashboard
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <LoginForm onLoginSuccess={() => router.replace('/')} />

@@ -1,9 +1,12 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import DashboardContent from './dashboard/page'
 
-export default async function Home() {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const supabase = createServerComponentClient({ cookies })
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -11,5 +14,5 @@ export default async function Home() {
     redirect('/login')
   }
 
-  return <DashboardContent />
+  return <>{children}</>
 }
