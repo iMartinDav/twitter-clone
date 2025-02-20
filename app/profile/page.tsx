@@ -13,7 +13,8 @@ import ProfileAvatar from '@/components/profile/ProfileAvatar'
 import ProfileInfo from '@/components/profile/ProfileInfo'
 import ProfileTabs from '@/components/profile/ProfileTabs'
 import ProfileSkeleton from '@/components/profile/ProfileSkeleton'
-import ProfileTweetList from '@/components/tweet-list'
+import { TweetCard } from '@/components/tweet/TweetCard'
+import { TweetInteractionsProvider } from '@/contexts/tweet-interactions-context'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row']
@@ -129,54 +130,59 @@ export default function ProfilePage({ params }: { params: { username?: string } 
   const canEdit = profile?.user_id === session?.user?.id
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-[600px] mx-auto">
-        <ProfileHeader 
-          fullName={profile?.full_name} 
-          tweetCount={tweets.length} 
-        />
+    <TweetInteractionsProvider>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[600px] mx-auto">
+          <ProfileHeader 
+            fullName={profile?.full_name} 
+            tweetCount={tweets.length} 
+          />
 
-        <ProfileCover coverUrl={profile?.cover_url} />
+          <ProfileCover coverUrl={profile?.cover_url} />
 
-        <ProfileAvatar 
+          <ProfileAvatar 
+            profile={profile}
+            canEdit={canEdit}
+            onEditClick={() => setIsEditing(true)}
+          />
+
+          <ProfileInfo 
+            profile={profile}
+            className="px-4"
+          />
+
+          <ProfileTabs 
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="divide-y divide-[#2F3336]"
+            >
+              {tweets.map((tweet) => (
+                <TweetCard
+                  key={tweet.id}
+                  tweet={tweet}
+                  variant="default"
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <EditProfileDialog
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
           profile={profile}
-          canEdit={canEdit}
-          onEditClick={() => setIsEditing(true)}
+          onSave={handleProfileUpdate}
         />
-
-        <ProfileInfo 
-          profile={profile}
-          className="px-4"
-        />
-
-        <ProfileTabs 
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="divide-y divide-[#2F3336]"
-          >
-            <ProfileTweetList 
-              initialTweets={tweets} 
-              userId={profile?.id} 
-            />
-          </motion.div>
-        </AnimatePresence>
       </div>
-
-      <EditProfileDialog
-        isOpen={isEditing}
-        onClose={() => setIsEditing(false)}
-        profile={profile}
-        onSave={handleProfileUpdate}
-      />
-    </div>
+    </TweetInteractionsProvider>
   )
 }

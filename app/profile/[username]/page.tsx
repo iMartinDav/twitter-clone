@@ -1,4 +1,3 @@
-// app/profile/[username]/page.tsx
 'use client'
 
 import React, { use, useState, useEffect, useCallback } from 'react';
@@ -11,7 +10,7 @@ import type { Tweet } from '@/types/tweet';
 
 import { getProfileByUsername, updateProfileData, getSessionData } from '@/services/profile-service';
 import { fetchProfileTweets } from '@/services/tweet-service';
-import { TweetInteractionsProvider, useTweetInteractionsContext } from '@/contexts/tweet-interactions-context'; // Import Provider and Context
+import { TweetInteractionsProvider, useTweetInteractions } from '@/contexts/tweet-interactions-context'; // Update this import
 
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileCover from '@/components/profile/ProfileCover';
@@ -31,7 +30,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     const [activeTab, setActiveTab] = useState('tweets');
     const [isEditing, setIsEditing] = useState(false);
     const [session, setSession] = useState<any>(null);
-    const { fetchTweetInteractionsInBulk } = useTweetInteractionsContext(); // Get bulk fetch from context
+    const { fetchTweetInteractionsInBulk } = useTweetInteractions(); // Use the correct hook name
 
     const router = useRouter();
     const { toast } = useToast();

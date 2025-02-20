@@ -1,7 +1,7 @@
 'use client'
 
 import { Tweet } from '@/types/tweet'
-import { TweetCard } from '@/components/profile/tweet-card'
+import { TweetCard } from './tweet/TweetCard'
 
 interface ProfileTweetListProps {
   initialTweets: Tweet[]

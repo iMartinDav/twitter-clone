@@ -4,8 +4,9 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState, useCallback } from 'react'
 
-import { TweetCard } from '../../components/profile/tweet-card'
+
 import { Tweet } from '@/types/tweet'
+import { TweetCard } from '@/components/tweet/TweetCard'
 
 export default function TweetList() {
   const [tweets, setTweets] = useState<Tweet[]>([])

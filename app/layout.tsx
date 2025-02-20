@@ -35,8 +35,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full bg-[#16141D]`}>
-        <Providers>
-          <TweetInteractionsProvider> {/* Wrap the content with TweetInteractionsProvider */}
+        <TweetInteractionsProvider> {/* Wrap the content with TweetInteractionsProvider */}
+          <Providers>
             {session ? (
               <div className="h-screen w-screen bg-background text-foreground flex justify-center">
                 <div className="flex w-full max-w-[1200px] h-full">
@@ -54,8 +54,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             ) : (
               children
             )}
-          </TweetInteractionsProvider>
-        </Providers>
+          </Providers>
+        </TweetInteractionsProvider>
       </body>
     </html>
   )

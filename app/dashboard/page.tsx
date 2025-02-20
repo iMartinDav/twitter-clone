@@ -14,13 +14,13 @@ import TweetItem from '@/components/tweet/TweetItem'
 import TweetForm from '@/components/tweet/TweetForm'
 
 import TweetLoadingSkeleton from '@/components/tweet/TweetLoadingSkeleton'
-import { TweetInteractionsProvider, useTweetInteractionsContext } from '@/contexts/tweet-interactions-context'
+import { TweetInteractionsProvider, useTweetInteractions } from '@/contexts/tweet-interactions-context'
 
 function DashboardContent() {
     const { session } = useAuth()
     const { toast } = useToast()
     const supabase = createClientComponentClient<Database>()
-    const { fetchTweetInteractionsInBulk } = useTweetInteractionsContext()
+    const { fetchTweetInteractionsInBulk } = useTweetInteractions()
 
     const [tweets, setTweets] = useState<Tweet[]>([])
     const [isMounted, setIsMounted] = useState(false)

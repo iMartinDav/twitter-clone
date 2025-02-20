@@ -304,7 +304,19 @@ export const ConversationDialog: React.FC<ConversationDialogProps> = ({
   )
 }
 
-export const ConversationButton = ({ tweetId, replyCount }: { tweetId: string; replyCount?: number }) => (
+type ConversationButtonProps = {
+  tweetId: string;
+  replyCount?: number;
+  disabled?: boolean;
+  variant?: 'default' | 'compact';
+}
+
+export const ConversationButton: React.FC<ConversationButtonProps> = ({
+  tweetId,
+  replyCount = 0,
+  disabled = false,
+  variant = 'default'
+}) => (
   <ConversationDialog tweetId={tweetId} replyCount={replyCount}>
     <Button
       variant="ghost"

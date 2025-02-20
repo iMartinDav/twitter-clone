@@ -13,7 +13,8 @@ interface TweetActionButtonProps extends React.ComponentProps<typeof Button> {
   isActive?: boolean
   activeColor?: string
   hoverColor?: string
-  onClick?: () => void
+  onClick?: (e: React.MouseEvent) => void
+  variant?: 'default' | 'compact';
 }
 
 export const TweetActionButton = React.forwardRef<HTMLButtonElement, TweetActionButtonProps>(
@@ -25,7 +26,8 @@ export const TweetActionButton = React.forwardRef<HTMLButtonElement, TweetAction
     activeColor = 'text-blue-500',
     hoverColor,
     className,
-    onClick, // Include onClick in props
+    onClick,
+    variant = 'default',
     ...props
   }, ref) => {
     const [animatedIsActive, setAnimatedIsActive] = useState(isActive); // State for animation trigger
@@ -39,24 +41,32 @@ export const TweetActionButton = React.forwardRef<HTMLButtonElement, TweetAction
       }
     }, [isActive, animatedIsActive]);
 
+    const buttonClass = cn(
+      "group relative h-8 w-8 rounded-full transition-colors duration-200",
+      hoverColor,
+      isActive ? activeColor : 'text-muted-foreground',
+      variant === 'compact' && 'scale-90',
+      className
+    );
+
+    const handleClick = (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      onClick?.(e)
+    }
 
     return (
       <motion.div
         className="flex items-center gap-1"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={onClick} // Attach onClick handler here
+        onClick={handleClick}
       >
         <Button
           ref={ref}
           variant="ghost"
           size="icon"
-          className={cn(
-            "group relative h-8 w-8 rounded-full transition-colors duration-200",
-            hoverColor,
-            isActive ? activeColor : 'text-muted-foreground',
-            className
-          )}
+          className={buttonClass}
           {...props}
         >
           <motion.div
