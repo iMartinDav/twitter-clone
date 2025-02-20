@@ -11,7 +11,7 @@ const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL
  *  Does not require a userId as it's intended for the main dashboard feed.
  * @returns {Promise<Tweet[]>} - An array of Tweet objects.
  */
-export const fetchDashboardTweets = async (): Promise<Tweet[]> => {
+export const fetchDashboardTweets = async (customSupabase = supabase): Promise<Tweet[]> => {
     try {
         const { data, error } = await supabase
             .from('tweets')
