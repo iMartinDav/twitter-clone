@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Heart } from 'lucide-react'
+import type { TweetVariant } from './types'
 
 interface TweetActionButtonProps extends React.ComponentProps<typeof Button> {
   icon: React.ReactNode
@@ -14,7 +15,7 @@ interface TweetActionButtonProps extends React.ComponentProps<typeof Button> {
   activeColor?: string
   hoverColor?: string
   onClick?: (e: React.MouseEvent) => void
-  variant?: 'default' | 'compact';
+  variant?: Extract<TweetVariant, 'default' | 'compact'>
 }
 
 export const TweetActionButton = React.forwardRef<HTMLButtonElement, TweetActionButtonProps>(

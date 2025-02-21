@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -15,6 +17,11 @@ import {
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Gift, ImagePlus, List, Smile, MapPin, Loader2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { useEmojiStore } from '@/stores/use-emoji-store'
+import { useTweetStore } from '@/stores/use-tweet-store'
+import { insertTweet } from '@/services/tweet-service'
+
 
 interface Profile {
   id: string
@@ -45,6 +52,11 @@ const ACTIONS: ActionIcon[] = [
   { icon: MapPin, label: 'Add location' },
 ]
 
+const EmojiPicker = dynamic(() => import('@/components/emoji-picker'), {
+  loading: () => <Loader2 className="h-5 w-5 animate-spin" />,
+  ssr: false
+})
+
 export default function NewTweetDialog({
   children,
   onTweetPosted,
@@ -54,10 +66,14 @@ export default function NewTweetDialog({
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { user, session } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   const supabase = createClientComponentClient()
+  const { handleEmojiSelect } = useEmojiStore()
+  const addTweet = useTweetStore((state) => state.addTweet)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -106,25 +122,42 @@ export default function NewTweetDialog({
 
     setIsSubmitting(true)
     try {
-      const { error } = await supabase
-        .from('tweets')
-        .insert([{ content: content.trim(), user_id: user.id }])
+      const newTweet = await insertTweet(content.trim(), user.id)
+      addTweet(newTweet)
+      
+      toast({
+        title: '🎉 Tweet Posted!',
+        description: 'Your tweet has been shared successfully!',
+        duration: 4000,
+      })
 
-      if (error) throw error
-
-      toast({ title: 'Success', description: 'Tweet posted!' })
       setContent('')
       setOpen(false)
-      router.refresh()
+      setShowEmojiPicker(false)
       onTweetPosted?.()
     } catch (error) {
+      console.error('Failed to post tweet:', error)
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to post tweet',
+        title: '❌ Error',
+        description: 'Could not post your tweet. Please try again.',
         variant: 'destructive',
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleEmojiClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowEmojiPicker(!showEmojiPicker)
+  }
+
+  const onEmojiSelect = (emoji: string) => {
+    if (textareaRef.current) {
+      handleEmojiSelect(textareaRef.current.id, emoji)
+      const newContent = textareaRef.current.value
+      setContent(newContent)
     }
   }
 
@@ -161,6 +194,7 @@ export default function NewTweetDialog({
             </Avatar>
             <div className="flex-1 space-y-2">
               <Textarea
+                ref={textareaRef}
                 placeholder="What's on your mind?"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -184,7 +218,27 @@ export default function NewTweetDialog({
                   <Icon className="h-5 w-5 text-[#6B46CC] transition-colors" />
                 </Button>
               ))}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full w-9 h-9 hover:bg-[#2F3336]/50 transition-all duration-200"
+                onClick={handleEmojiClick}
+                aria-label="Add emoji"
+              >
+                <Smile className="h-5 w-5 text-[#6B46CC] transition-colors" />
+              </Button>
             </div>
+            
+            {showEmojiPicker && (
+              <div 
+                className="absolute bottom-20 right-4 z-50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <EmojiPicker onEmojiSelect={onEmojiSelect} />
+              </div>
+            )}
+            
             <div className="flex items-center gap-3">
               <div className="h-1 w-24 bg-[#2F3336] rounded-full overflow-hidden">
                 <div

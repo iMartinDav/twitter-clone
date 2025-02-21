@@ -11,6 +11,12 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/use-toast'
 import { z } from 'zod'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 // Zod schema for form validation
 const loginSchema = z.object({
@@ -279,16 +285,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
           <div className="grid grid-cols-2 gap-4">
             {socialProviders.map(({ provider, icon, label }) => (
-              <Button
-                key={provider}
-                onClick={() => handleOAuthSignIn(provider)}
-                disabled={formState.isLoading}
-                className="h-14 rounded-xl bg-[#222222] hover:bg-[#2a2a2a] text-white border border-[#333333] hover:border-[#59F6E8] transition-all duration-200"
-                aria-label={`Sign in with ${label}`}
-              >
-                {icon}
-                <span className="ml-2">{label}</span>
-              </Button>
+              <TooltipProvider key={provider} delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={(e) => e.preventDefault()}
+                      className="h-14 w-full rounded-xl bg-[#222222] hover:bg-[#2a2a2a] text-white border border-[#333333] hover:border-[#59F6E8] transition-colors duration-200"
+                      aria-label={`Sign in with ${label}`}
+                    >
+                      {icon}
+                      <span className="ml-2">{label}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    sideOffset={5}
+                    className="bg-[#333333] text-white px-3 py-1.5 rounded-xl text-sm font-medium"
+                  >
+                    <p>Coming Soon!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ))}
           </div>
 

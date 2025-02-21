@@ -13,20 +13,20 @@ export async function middleware(req: NextRequest) {
   const publicPaths = ['/login', '/auth/callback']
   const isPublicPath = publicPaths.includes(req.nextUrl.pathname)
 
-  // Store the current URL for post-login redirect
   if (!session && !isPublicPath) {
     const redirectUrl = new URL('/login', req.url)
     redirectUrl.searchParams.set('redirect', req.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // If logged in and trying to access login page, redirect to home
   if (session && isPublicPath) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  // Update response headers to prevent caching
+  // Important: ensure response headers are properly set
   res.headers.set('Cache-Control', 'no-store, max-age=0')
+  res.headers.set('x-middleware-cache', 'no-cache')
+  
   return res
 }
 

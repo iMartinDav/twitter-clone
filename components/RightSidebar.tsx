@@ -192,53 +192,56 @@ function PopularTools() {
 
 export default function RightSidebar() {
   return (
-    <aside className="h-full p-4 bg-background overflow-y-auto border-l border-border w-[380px] scrollbar-thin scrollbar-thumb-[#59F6E8]/20 scrollbar-track-transparent hover:scrollbar-thumb-[#59F6E8]/30">
-      {/* Search Bar */}
-      <div className="mb-6 relative group">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 transition-transform duration-300 group-hover:scale-110" />
-        <Input
-          type="text"
-          placeholder="Search papers, tools, or researchers"
-          className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/60 rounded-full w-full transition-all duration-300
-            focus-visible:ring-[#59F6E8] focus-visible:bg-white/10 hover:bg-white/8
-            hover:shadow-[0_0_15px_rgba(89,246,232,0.1)]"
-        />
+    <aside className="hidden md:block lg:w-[380px] md:w-[320px] h-full bg-background overflow-y-auto border-l border-border scrollbar-thin scrollbar-thumb-[#59F6E8]/20 scrollbar-track-transparent hover:scrollbar-thumb-[#59F6E8]/30">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-4">
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60 transition-transform duration-300 group-hover:scale-110" />
+          <Input
+            type="text"
+            placeholder="Search papers, tools, or researchers"
+            className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/60 rounded-full w-full transition-all duration-300
+              focus-visible:ring-[#59F6E8] focus-visible:bg-white/10 hover:bg-white/8
+              hover:shadow-[0_0_15px_rgba(89,246,232,0.1)]"
+          />
+        </div>
       </div>
 
-      {/* Popular Tools */}
-      <Card className="mb-6 bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg text-white">Popular Tools</CardTitle>
-          <BookMarked className="h-5 w-5 text-[#59F6E8]" />
-        </CardHeader>
-        <CardContent>
-          <PopularTools />
-        </CardContent>
-      </Card>
+      <div className="p-4 space-y-6">
+        {/* Popular Tools */}
+        <Card className="mb-6 bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg text-white">Popular Tools</CardTitle>
+            <BookMarked className="h-5 w-5 text-[#59F6E8]" />
+          </CardHeader>
+          <CardContent>
+            <PopularTools />
+          </CardContent>
+        </Card>
 
-      {/* Community Members */}
-      <Card className="mb-6 bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
-        <CardHeader>
-          <CardTitle className="text-lg text-white">Community Highlights</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {SUGGESTED_USERS.map((user, index) => (
-            <UserSuggestion key={user.id} user={user} index={index} />
-          ))}
-        </CardContent>
-      </Card>
+        {/* Community Members */}
+        <Card className="mb-6 bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
+          <CardHeader>
+            <CardTitle className="text-lg text-white">Community Highlights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {SUGGESTED_USERS.map((user, index) => (
+              <UserSuggestion key={user.id} user={user} index={index} />
+            ))}
+          </CardContent>
+        </Card>
 
-      {/* Trending Now */}
-      <Card className="bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
-        <CardHeader>
-          <CardTitle className="text-lg text-white">Trending in Bioinformatics</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {TRENDING_TOPICS.map((topic, index) => (
-            <TrendingTopic key={topic.hashtag} topic={topic} index={index} />
-          ))}
-        </CardContent>
-      </Card>
+        {/* Trending Now */}
+        <Card className="bg-white/5 border-white/10 rounded-xl transition-transform duration-300 hover:shadow-[0_0_20px_rgba(89,246,232,0.1)] hover:scale-[1.01]">
+          <CardHeader>
+            <CardTitle className="text-lg text-white">Trending in Bioinformatics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {TRENDING_TOPICS.map((topic, index) => (
+              <TrendingTopic key={topic.hashtag} topic={topic} index={index} />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </aside>
   )
 }

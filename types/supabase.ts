@@ -41,6 +41,8 @@ export type Database = {
           content: string
           user_id: string
           created_at: string
+          reply_to: string | null  // Add this
+          retweet_id: string | null
         }
         Insert: {
           id?: string

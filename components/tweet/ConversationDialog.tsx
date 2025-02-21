@@ -20,6 +20,7 @@ import { Gift, ImagePlus, List, Smile, MapPin, Loader2, MessageSquare } from 'lu
 import { formatDistanceToNow } from 'date-fns'
 import { EmojiPicker } from '@/components/common/EmojiPicker'
 import { createReply } from '@/services/tweet-interactions'
+import { insertTweet } from '@/services/tweet-service'
 
 interface Profile {
   id: string
@@ -158,20 +159,25 @@ export const ConversationDialog: React.FC<ConversationDialogProps> = ({
 
     setIsSubmitting(true)
     try {
-      await createReply(tweetId, content.trim(), user.id)
-      toast({ 
-        title: 'Success', 
-        description: 'Reply posted!',
-        variant: 'default'
+      console.log('Creating reply to tweet:', tweetId)
+      const newTweet = await insertTweet(content.trim(), user.id, { 
+        replyTo: tweetId 
       })
+      
+      toast({ 
+        title: '🎉 Reply posted!',
+        description: 'Your reply has been shared successfully!',
+        duration: 4000
+      })
+      
       setContent('')
       setOpen(false)
       router.refresh()
     } catch (error) {
       console.error('Reply error:', error)
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to post reply',
+        title: '❌ Error',
+        description: 'Could not post your reply. Please try again.',
         variant: 'destructive',
       })
     } finally {

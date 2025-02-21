@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   supabaseClient: SupabaseClient<Database> | null
+  profile: Database['public']['Tables']['profiles']['Row'] | null // Add this line
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,57 +21,72 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   supabaseClient: null,
+  profile: null // Add this line
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
-  const [authError, setAuthError] = useState<Error | null>(null) // State to track auth errors
+  const [supabase] = useState(() => createClientComponentClient<Database>())
+  const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(null)
 
   useEffect(() => {
-    const client = createClientComponentClient<Database>()
-    setSupabase(client)
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
 
     const initializeAuth = async () => {
-      setLoading(true) // Start loading before auth initialization
-      setAuthError(null) // Clear any previous auth errors
       try {
-        const {
-          data: { session: initialSession },
-          error,
-        } = await client.auth.getSession()
-
-        if (error) {
-          console.error('Initial session fetch error:', error)
-          setAuthError(error) // Set auth error state
-          throw error // Re-throw to be caught in finally block and setLoading(false)
-        }
-
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+        
+        if (error) throw error
+        
         setSession(initialSession)
         setUser(initialSession?.user ?? null)
 
-        const {
-          data: { subscription },
-        } = client.auth.onAuthStateChange((_event, newSession) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
           setSession(newSession)
           setUser(newSession?.user ?? null)
           router.refresh()
         })
 
-        return () => subscription?.unsubscribe() // Optional unsubscribe
+        return () => subscription?.unsubscribe()
       } catch (error) {
         console.error('Auth initialization error:', error)
-        // Optionally handle error display to user, or redirect to error page
       } finally {
-        setLoading(false) // Ensure loading is set to false even after errors
+        setLoading(false)
       }
     }
 
     initializeAuth()
-  }, [router])
+  }, [supabase, router, mounted])
+
+  // Add profile fetching in useEffect
+  useEffect(() => {
+    if (!supabase) return
+
+    const fetchProfile = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session?.user?.id)
+          .single()
+        setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+      }
+    }
+
+    if (session?.user?.id) {
+      fetchProfile()
+    }
+  }, [session?.user?.id, supabase])
 
   const signOut = useCallback(async () => {
     if (!supabase) return
@@ -90,22 +106,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signOut,
       supabaseClient: supabase,
-      authError, // Expose auth error in context
+      profile // Add this line
     }),
-    [user, session, loading, signOut, supabase, authError],
+    [user, session, loading, signOut, supabase, profile],
   )
+
+  if (!mounted) {
+    return null // Prevent hydration issues by not rendering anything on first mount
+  }
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {!loading ? (
-        children
-      ) : (
+      {!loading ? children : (
         <div className="flex justify-center p-4">Loading authentication...</div>
-      )}
-      {authError && ( // Optionally display an error message if auth initialization failed
-        <div className="text-red-500 text-center p-2">
-          Authentication failed to initialize. Please try again later.
-        </div>
       )}
     </AuthContext.Provider>
   )

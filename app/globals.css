@@ -4,10 +4,10 @@
 
 @layer base {
   html {
-    @apply scroll-smooth;
+    @apply scroll-smooth overflow-x-hidden;
   }
   body {
-    @apply bg-[#16141D] text-white antialiased; /* Set background and text colors, antialiased */
+    @apply bg-[#16141D] text-white antialiased min-h-screen; /* Set background and text colors, antialiased */
     font-family: 'Inter', sans-serif; /* Consistent font family */
   }
 }
@@ -39,5 +39,30 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Custom breakpoint utilities */
+  .container-custom {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+  
+  /* Responsive padding utilities */
+  .safe-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Mobile-first spacing */
+  .mobile-gap {
+    @apply gap-2 sm:gap-4 lg:gap-6;
+  }
+  
+  /* Responsive grid layouts */
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  /* Mobile navigation utilities */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-[#16141D] border-t border-white/10 flex justify-around items-center py-3 lg:hidden z-50;
   }
 }

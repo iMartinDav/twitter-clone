@@ -6,20 +6,16 @@ import { useTweetInteractions } from '@/contexts'
 import { useToast } from '@/components/ui/use-toast'
 import { toggleLike, toggleRetweet } from '@/services/tweet-interactions'
 import { useAuth } from '@/contexts/auth-context'
+import type { TweetVariant } from './types'
 
 interface TweetActionsProps {
   tweetId: string
+  variant?: TweetVariant
   className?: string
-  variant?: 'default' | 'compact'
   onClick?: (e: React.MouseEvent) => void
 }
 
-export const TweetActions: React.FC<TweetActionsProps> = ({
-  tweetId,
-  className = '',
-  variant = 'default',
-  onClick
-}) => {
+export function TweetActions({ variant = 'default', ...props }: TweetActionsProps) {
   const { toast } = useToast()
   const { user } = useAuth()
   const {
@@ -27,7 +23,7 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
     isLiked,
     isRetweeted,
     fetchTweetInteractions
-  } = useTweetInteractions(tweetId)
+  } = useTweetInteractions(props.tweetId)
 
   const handleInteraction = async (
     action: 'like' | 'retweet',
@@ -44,7 +40,7 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
 
     try {
       await callback()
-      await fetchTweetInteractions(tweetId)
+      await fetchTweetInteractions(props.tweetId)
       toast({ 
         title: 'Success', 
         description: `${action.charAt(0).toUpperCase() + action.slice(1)} updated` 
@@ -58,12 +54,12 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
     }
   }
 
-  const handleLike = () => handleInteraction('like', async () => { await toggleLike(tweetId, user!.id) })
-  const handleRetweet = () => handleInteraction('retweet', async () => { await toggleRetweet(tweetId, user!.id) })
+  const handleLike = () => handleInteraction('like', async () => { await toggleLike(props.tweetId, user!.id) })
+  const handleRetweet = () => handleInteraction('retweet', async () => { await toggleRetweet(props.tweetId, user!.id) })
 
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/tweet/${tweetId}`)
+      await navigator.clipboard.writeText(`${window.location.origin}/tweet/${props.tweetId}`)
       toast({ title: 'Copied!', description: 'Tweet link copied to clipboard' })
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to copy link', variant: 'destructive' })
@@ -72,13 +68,13 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
 
   return (
     <div 
-      className={`flex items-center justify-between ${className}`}
-      onClick={onClick}
+      className={`flex items-center justify-between ${props.className}`}
+      onClick={props.onClick}
     >
       <ConversationButton
-        tweetId={tweetId}
+        tweetId={props.tweetId}
         replyCount={currentInteractions?.replies?.length ?? 0}
-        variant={variant}
+        variant={variant === 'detailed' ? 'default' : variant}
       />
       <TweetActionButton
         icon={<Repeat2 className="h-5 w-5" />}
@@ -88,7 +84,7 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
         hoverColor="hover:text-green-400"
         activeColor="text-green-400"
         onClick={handleRetweet}
-        variant={variant}
+        variant={variant === 'detailed' ? 'default' : variant}
       />
       <TweetActionButton
         icon={<Heart className="h-5 w-5" />}
@@ -98,14 +94,14 @@ export const TweetActions: React.FC<TweetActionsProps> = ({
         hoverColor="hover:text-red-400"
         activeColor="text-red-400"
         onClick={handleLike}
-        variant={variant}
+        variant={variant === 'detailed' ? 'default' : variant}
       />
       <TweetActionButton
         icon={<Share className="h-5 w-5" />}
         label="Share"
         hoverColor="hover:text-blue-400"
         onClick={handleShare}
-        variant={variant}
+        variant={variant === 'detailed' ? 'default' : variant}
       />
     </div>
   )

@@ -1,167 +1,43 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { FaSquareXTwitter } from 'react-icons/fa6'
 import { useAuth } from '@/contexts/auth-context'
-import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import FeedTweetList from '@/components/feed/FeedTweetList'
 import type { Database } from '@/types/supabase'
 import type { Tweet } from '@/types/tweet'
-import { fetchDashboardTweets } from '@/services/tweet-service'
-import TweetItem from '@/components/tweet/TweetItem'
-import TweetForm from '@/components/tweet/TweetForm'
-import TweetLoadingSkeleton from '@/components/tweet/TweetLoadingSkeleton'
-import { useTweetInteractions } from '@/contexts/tweet-interactions-context'
+import { useTweetsStore } from '@/hooks/use-tweets-store'
+import { fetchTweetsWithProfiles } from '@/services/tweet-service'
+import { MainTweetForm } from '@/components/tweet/MainTweetForm'
 
-export default function HomePage() {
-    const { session } = useAuth()
-    const { toast } = useToast()
-    const supabase = createClientComponentClient<Database>()
-    const { fetchTweetInteractionsInBulk } = useTweetInteractions()
-
-    const [tweets, setTweets] = useState<Tweet[]>([])
-    const [isMounted, setIsMounted] = useState(false)
-    const [profile, setProfile] = useState<Database['public']['Tables']['profiles']['Row'] | null>(null)
-
-    const fetchInitialData = useCallback(async () => {
-        setIsMounted(true)
-
-        try {
-            const initialTweets = await fetchDashboardTweets()
-            setTweets(initialTweets)
-            fetchTweetInteractionsInBulk(initialTweets.map((tweet) => tweet.id))
-
-            const profileData = await fetchProfile()
-            setProfile(profileData)
-        } catch (error) {
-            console.error('Error fetching initial data:', error)
-            toast({ title: 'Error', description: 'Failed to load dashboard data', variant: 'destructive' })
-        }
-    }, [fetchTweetInteractionsInBulk, toast])
-
-    const fetchProfile = useCallback(async () => {
-        if (!session?.user?.id) return null
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .single()
-            if (error) throw error
-            return data
-        } catch (error) {
-            console.error('Error fetching profile:', error)
-            return null
-        }
-    }, [session?.user?.id, supabase])
-
-    const handleTweetPosted = useCallback(async () => {
-        try {
-            // Refresh the tweets list immediately after posting
-            const updatedTweets = await fetchDashboardTweets()
-            setTweets(updatedTweets)
-            
-            // Update interactions for all tweets
-            if (updatedTweets.length > 0) {
-                await fetchTweetInteractionsInBulk(updatedTweets.map(tweet => tweet.id))
-            }
-            
-            // Scroll to top to show the new tweet
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-        } catch (error) {
-            console.error('Error updating tweets:', error)
-            toast({
-                title: 'Error',
-                description: 'Failed to update tweets',
-                variant: 'destructive'
-            })
-        }
-    }, [fetchTweetInteractionsInBulk, toast])
-
-    const handleRealtimeUpdate = useCallback(
-        (payload: RealtimePostgresChangesPayload<Database['public']['Tables']['tweets']['Row']>) => {
-            if (payload.eventType === 'INSERT') {
-                // Immediately add the new tweet to the list
-                fetchDashboardTweets(supabase).then((updatedTweets) => {
-                    setTweets(updatedTweets)
-                    if (updatedTweets.length > 0) {
-                        fetchTweetInteractionsInBulk(updatedTweets.map((tweet) => tweet.id))
-                    }
-                })
-            }
-            if (payload.eventType === 'DELETE') {
-                setTweets((prev) => prev.filter((t) => t.id !== payload.old.id))
-            }
-        },
-        [fetchTweetInteractionsInBulk]
-    )
-
-    const handleRealtimeLike = useCallback(
-        (payload: RealtimePostgresChangesPayload<Database['public']['Tables']['likes']['Row']>) => {
-            if ('tweet_id' in payload.new && payload.new.tweet_id) {
-                fetchTweetInteractionsInBulk([payload.new.tweet_id])
-            }
-        },
-        [fetchTweetInteractionsInBulk]
-    )
+export default function Page() {
+    const { tweets, setTweets } = useTweetsStore()
+    const [isLoading, setIsLoading] = useState(true)
+    const { profile } = useAuth()
 
     useEffect(() => {
-        fetchInitialData()
-
-        const tweetsChannel = supabase
-            .channel('tweets_channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'tweets' },
-                handleRealtimeUpdate
-            )
-            .subscribe()
-
-        const likesChannel = supabase
-            .channel('likes_channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, handleRealtimeLike)
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(tweetsChannel)
-            supabase.removeChannel(likesChannel)
+        async function loadTweets() {
+            try {
+                const data = await fetchTweetsWithProfiles()
+                setTweets(data)
+            } catch (error) {
+                console.error('Error loading tweets:', error)
+            } finally {
+                setIsLoading(false)
+            }
         }
-    }, [fetchInitialData, handleRealtimeLike, handleRealtimeUpdate, supabase])
 
-    useEffect(() => {
-        if (!session?.user?.id) return
+        loadTweets()
+    }, [setTweets])
 
-        fetchProfile().then((profileData) => {
-            setProfile(profileData)
-        })
-
-        const profileChannel = supabase
-            .channel('dashboard_profile')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'profiles',
-                    filter: `user_id=eq.${session.user.id}`,
-                },
-                (payload) => {
-                    setProfile(payload.new as Database['public']['Tables']['profiles']['Row'])
-                }
-            )
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(profileChannel)
-        }
-    }, [session?.user?.id, supabase, fetchProfile])
-
-    if (!isMounted) return <TweetLoadingSkeleton />
+    const handleNewTweet = async (newTweet: Tweet) => {
+        useTweetsStore.getState().addTweet(newTweet)
+    }
 
     return (
-        <div className="w-full max-w-[600px] mx-auto bg-background">
+        <main className="w-full max-w-[600px] mx-auto bg-background">
             <header className="sticky top-0 bg-background/80 backdrop-blur-sm z-30 border-b border-[#2F3336]">
                 <div className="flex justify-center p-2">
                     <FaSquareXTwitter className="text-4xl text-[#59F6E8]" />
@@ -177,18 +53,11 @@ export default function HomePage() {
                 </nav>
             </header>
 
-            <TweetForm onTweetPosted={handleTweetPosted} profile={profile} />
-
-            <div className="divide-y divide-[#2F3336]">
-                {tweets.length > 0 ? (
-                    tweets.map((tweet) => <TweetItem key={tweet.id} tweet={tweet} />)
-                ) : (
-                    <div className="p-8 text-center text-muted-foreground">
-                        <p className="text-lg">No tweets yet</p>
-                        <p className="text-sm mt-2">Be the first to share your thoughts!</p>
-                    </div>
-                )}
-            </div>
-        </div>
+            <MainTweetForm
+                profile={profile}
+                onSuccess={handleNewTweet}
+            />
+            <FeedTweetList tweets={tweets} isLoading={isLoading} />
+        </main>
     )
 }

@@ -2,20 +2,24 @@
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Database } from './supabase'
 
-export interface Tweet {
-  [x: string]: any
-  id: string
-  content: string
-  created_at: string
-  user_id: string
-  isReply?: boolean
-  replyCount?: number
-  replies?: Tweet[]
-  profile: {
-    full_name: string
-    username: string
-    avatar_url: string
-  }
+type Profile = Database['public']['Tables']['profiles']['Row']
+type BaseTweet = Database['public']['Tables']['tweets']['Row']
+
+export interface Tweet extends BaseTweet {
+    profiles: Profile
+    user: Profile
+    likes_count?: { count: number }[]
+    user_has_liked?: { user_id: string }[]
+    reply_to: string | null
+    retweet_id: string | null
+    retweeted_tweet?: Tweet | null
+    reply_to_user?: Profile
+    has_replies?: boolean // Changed from replies: boolean
+    replies_count: number
+}
+
+export interface TweetWithReplies extends Omit<Tweet, 'has_replies'> {
+    replies: Tweet[]
 }
 
 export interface TweetInteraction {
