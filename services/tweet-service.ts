@@ -53,7 +53,7 @@ export const fetchProfileTweets = async (userId: string): Promise<Tweet[]> => {
 
 // Core tweet operations
 export const insertTweet = async (
-content: string, userId: string, p0: { retweetId: string },
+content: string, userId: string, options?: { retweetId?: string; replyTo?: string }
 ): Promise<Tweet> => {
     if (content.length > 280) {
         throw new Error('Tweet exceeds 280 characters')

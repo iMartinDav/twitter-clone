@@ -122,7 +122,7 @@ export default function NewTweetDialog({
 
     setIsSubmitting(true)
     try {
-      const newTweet = await insertTweet(content.trim(), user.id)
+      const newTweet = await insertTweet(content.trim(), user.id, {})
       addTweet(newTweet)
       
       toast({

@@ -13,15 +13,13 @@ compatibility_flags = ["nodejs_compat"]
   max_batch_timeout = 30
   max_retries = 3
 
+[build]
+command = "pnpm install && pnpm build"
+watch_dir = "src"
+
 [vars]
-SUPABASE_URL = ""
-SUPABASE_ANON_KEY = ""
-JWT_SECRET = ""
-
-# Development environment
-[env.dev]
-vars = { ENVIRONMENT = "dev" }
-
-# Production environment
-[env.production]
-vars = { ENVIRONMENT = "production" }
+ENVIRONMENT = "dev"
+NEXT_PUBLIC_SUPABASE_URL = "https://lmgzflagxmbvmzkinoyw.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtZ3pmbGFneG1idm16a2lub3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1MDA2NzEsImV4cCI6MjA1MTA3NjY3MX0.4ANYJjsA-osplYe5y0QcQprRiB2AGMAA6oeOAyLuChE"
+NEXT_PUBLIC_WORKER_URL = "http://localhost:8787"
+SUPABASE_JWT_SECRET = "OUwYUsQHhPLY8xBNTHm4kt9qC7dDEWSIzVc+RNwLbwkxaFwa72tg9Y/UTizBTBOEZEK4xRdpUi4TXZtzGmOgRg=="

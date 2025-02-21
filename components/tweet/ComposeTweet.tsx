@@ -32,7 +32,7 @@ export function ComposeTweet() {
 
     setIsSubmitting(true)
     try {
-      await insertTweet(content.trim(), user.id)
+      await insertTweet(content.trim(), user.id, {})
       setContent('')
       toast({ title: 'Success', description: 'Tweet posted!' })
       router.refresh()
