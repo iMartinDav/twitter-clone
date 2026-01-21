@@ -19,6 +19,6 @@
     "@types/node": "^20.17.19",
     "dotenv": "^16.4.7",
     "typescript": "^5.7.3",
-    "wrangler": "^3.109.2"
+    "wrangler": "^3.114.17"
   }
 }
